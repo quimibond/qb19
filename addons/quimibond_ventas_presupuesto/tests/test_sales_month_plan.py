@@ -202,3 +202,28 @@ class TestSalesMonthPlan(TransactionCase):
         self.assertIn(b"24900.0 %", pdf)
         action = plan.action_qb_send()
         self.assertIn("Presupuesto anual del mes: 3", str(action['context']['default_body']))
+
+    def test_09_mercado_que_el_anual_no_trae_no_se_compara(self):
+        """3.36.0 (Jose, 25-nov): la REV2 de 2026 no trae Industrial en noviembre. Un mercado sin
+        renglones en el anual del mes sale «El anual no trae este mes» y no entra a la diferencia."""
+        plan = self._build()
+        conf_line = self.env['qb.sales.month.plan.line'].create({
+            'plan_id': plan.id, 'product_id': self.product.id, 'mercado': 'confeccion', 'qty': 10.0,
+            'price_input': 2.0, 'price_currency_id': self.env.company.currency_id.id})
+        self.assertTrue(conf_line.amount)
+        self.assertAlmostEqual(plan.amount_annual, 3.0, places=2)
+        self.assertAlmostEqual(plan.amount_annual_diff, 747.0, places=2, msg="Solo Industrial, que el anual trae")
+        self.assertAlmostEqual(plan.amount_no_annual, conf_line.amount, places=2)
+        self.env.flush_all()
+        plan.invalidate_recordset(['compare_ids'])
+        conf = plan.compare_ids.filtered(lambda r: r.mercado == 'confeccion')
+        self.assertEqual(conf.annual_note, "El anual no trae este mes")
+        self.assertFalse(conf.amount_diff)
+        rows, total, _has = plan._qb_compare_report()
+        by_label = {r['label']: r for r in rows}
+        self.assertEqual(by_label["Confección"]['annual'], "El anual no trae este mes")
+        self.assertEqual(by_label["Confección"]['diff'], '')
+        self.assertEqual((total['plan'], total['diff']), ("750", "747"))
+        action = plan.action_qb_send()
+        self.assertIn("mercados por %s del mes" % '{:,.0f}'.format(conf_line.amount),
+                      str(action['context']['default_body']))
