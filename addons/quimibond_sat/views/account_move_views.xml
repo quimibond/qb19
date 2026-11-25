@@ -44,6 +44,7 @@
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='account_id']" position="after">
                 <field name="sat_bill_rule_id" optional="hide" column_invisible="parent.move_type not in ('in_invoice', 'in_refund')"/>
                 <field name="sat_clave" optional="hide" column_invisible="parent.move_type not in ('in_invoice', 'in_refund')"/>
+                <field name="sat_cuenta_propuesta_id" optional="hide" column_invisible="parent.move_type not in ('in_invoice', 'in_refund')"/>
             </xpath>
         </field>
     </record>
