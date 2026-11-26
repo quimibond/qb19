@@ -424,7 +424,7 @@ class SgiSalesBudgetLine(models.Model):
         if self.qty_origen == 'pronostico':
             first, nxt = self._sgi_month_bounds(self.date)
             domain = [('company_id', '=', self.company_id.id), ('product_id', '=', self.product_id.id),
-                      ('week', '>=', first), ('week', '<', nxt)]
+                      ('month', '>=', first), ('month', '<', nxt)]
             if self.partner_id:
                 domain.append(('partner_id', 'child_of', self.partner_id.commercial_partner_id.id))
             return {'type': 'ir.actions.act_window', 'name': "Pronóstico — %s" % self.display_name,
@@ -1017,11 +1017,11 @@ class SgiSalesBudgetLine(models.Model):
         _first, end = budget_lines[0]._sgi_month_bounds(max(budget_lines.mapped('date')))
         articulos = budget_lines.product_id.mapped(lambda p: p.qb_articulo_id or p)
         forecast = self.env['qb.forecast.line'].search([
-            ('company_id', 'in', budget_lines.company_id.ids), ('week', '>=', start), ('week', '<', end),
+            ('company_id', 'in', budget_lines.company_id.ids), ('month', '>=', start), ('month', '<', end),
             ('articulo_id', 'in', articulos.ids)])
         index = defaultdict(list)
         for fl in forecast:
-            index[(fl.company_id.id, fl.articulo_id.id, fl.week.year, fl.week.month)].append(fl)
+            index[(fl.company_id.id, fl.articulo_id.id, fl.month.year, fl.month.month)].append(fl)
         for line in budget_lines:
             articulo = line.product_id.qb_articulo_id or line.product_id
             partner = line.partner_id.commercial_partner_id
