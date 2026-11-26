@@ -35,9 +35,12 @@ def etiqueta_origen(env, origen):
 
 
 def vendedor_llamada(website, mercado):
-    """Quién atiende la llamada: confección tiene su vendedor; lo demás, el general."""
+    """Quién atiende la solicitud: confección tiene su vendedor; lo demás, el general.
+
+    El mercado llega como lo ve el visitante: «Confección» o, en /en, «Apparel».
+    """
     sitio = website.sudo()
-    if (mercado or '').strip().lower().startswith('confecc') and sitio.qb_llamadas_confeccion_user_id:
+    if (mercado or '').strip().lower().startswith(('confecc', 'apparel')) and sitio.qb_llamadas_confeccion_user_id:
         return sitio.qb_llamadas_confeccion_user_id
     return sitio.qb_llamadas_user_id
 
@@ -53,7 +56,9 @@ class QuimibondFormulario(WebsiteForm):
             etiqueta = etiqueta_origen(request.env, origen)
             if etiqueta:
                 values['tag_ids'] = [(4, etiqueta.id)]
-            if origen == 'llamada' and not values.get('user_id'):
+            # Toda solicitud del sitio sale con vendedor: sin él no hay aviso
+            # y la oportunidad se queda sin abrir (Lamitex, 2026-11-25).
+            if origen in ORIGENES and not values.get('user_id'):
                 vendedor = vendedor_llamada(request.website, request.params.get('Mercado'))
                 if vendedor:
                     values['user_id'] = vendedor.id

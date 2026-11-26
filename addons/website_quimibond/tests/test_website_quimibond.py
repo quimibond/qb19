@@ -249,6 +249,14 @@ class TestSitioB2B(HttpCase):
             lead = self.env['crm.lead'].browse(respuesta.json()['id'])
             self.assertEqual(lead.user_id, vendedor, mercado)
             self.assertEqual(lead.tag_ids.mapped('name'), [ORIGENES['llamada']])
+        # Las cotizaciones también, y en inglés el mercado llega traducido.
+        for mercado, vendedor in (('Apparel', confeccion), ('Automotive', general), ('', general)):
+            respuesta = self.url_open('/website/form/crm.lead', data={
+                'csrf_token': Request.csrf_token(self), 'name': 'Scrim', 'contact_name': 'Prueba',
+                'email_from': 'cotizar@example.com', 'description': 'Cotización', 'Mercado': mercado, 'qb_origen': 'cotizar',
+            })
+            lead = self.env['crm.lead'].browse(respuesta.json()['id'])
+            self.assertEqual(lead.user_id, vendedor, mercado)
 
     def test_ingles(self):
         from odoo.addons.website_quimibond.controllers import idioma
