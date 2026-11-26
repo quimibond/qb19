@@ -346,6 +346,7 @@
                         <div class="qb-grid qb-grid--2">
                             <figure class="qb-card qb-etapa qb-reveal">
                                 <div class="qb-etapa__caja"><canvas data-qb-anim="jet" role="img" aria-label="Esquema de un jet de teñido: la tela circula en cuerda por el baño"/></div>
+                                <ol class="qb-fases" data-qb-fases="1" aria-hidden="true"><li>Carga</li><li>Teñido</li><li>Enjuague</li><li>Descarga</li></ol>
                                 <figcaption>
                                     <span class="qb-mono qb-num">Jet de teñido</span>
                                     <h3>La tela circula hasta que el color queda parejo.</h3>
@@ -354,6 +355,7 @@
                             </figure>
                             <figure class="qb-card qb-etapa qb-reveal">
                                 <div class="qb-etapa__caja"><canvas data-qb-anim="rama" role="img" aria-label="Esquema de una rama: la tela se abre al ancho y cruza las cámaras de aire caliente"/></div>
+                                <ol class="qb-fases" data-qb-fases="1" aria-hidden="true"><li>Entrada</li><li>Ensanche</li><li>Termofijado</li><li>Enrollado</li></ol>
                                 <figcaption>
                                     <span class="qb-mono qb-num">Rama</span>
                                     <h3>Al ancho, seca y termofijada.</h3>

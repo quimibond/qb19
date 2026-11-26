@@ -1286,7 +1286,6 @@
     var TINTA = "#18181b";
     var ACENTO = "#2f54c8";
     var CALOR = "#e8590c";
-    var MONO = '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
     function mezclaHex(a, b, k) {
         function canal(hex, i) { return parseInt(hex.substr(1 + i * 2, 2), 16); }
@@ -1329,31 +1328,6 @@
         ctx.lineJoin = "round";
         return s;
     }
-    /* Rótulo con línea guía; en pantallas chicas no se dibuja (no se leería). */
-    function rotulo(ctx, s, texto, x, y, ax, ay, alinear) {
-        if (s < 0.74) {
-            return;
-        }
-        ctx.save();
-        if (ax !== undefined && ax !== null) {
-            ctx.strokeStyle = "rgba(9, 9, 11, .32)";
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(x + (alinear === "right" ? 3 : -3), y - 3);
-            ctx.lineTo(ax, ay);
-            ctx.stroke();
-            ctx.fillStyle = TINTA;
-            ctx.beginPath();
-            ctx.arc(ax, ay, 1.6, 0, TAU);
-            ctx.fill();
-        }
-        ctx.font = "500 9px " + MONO;
-        ctx.textAlign = alinear || "left";
-        ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = "rgba(9, 9, 11, .62)";
-        ctx.fillText(texto, x + (alinear === "right" ? -1 : 1), y);
-        ctx.restore();
-    }
     function rueda(ctx, x, y, r, giro, aspas) {
         ctx.beginPath();
         for (var i = 0; i < aspas; i++) {
@@ -1364,521 +1338,1042 @@
         ctx.stroke();
     }
 
+    /* Polilínea plana [x0, y0, x1, y1…] con su largo acumulado, para trazar solo un tramo. */
+    function medirLinea(pts) {
+        var ac = [0];
+        for (var i = 2; i < pts.length; i += 2) {
+            ac.push(ac[ac.length - 1] + Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]));
+        }
+        return ac;
+    }
+    function tramo(ctx, pts, ac, s0, s1) {
+        var abierto = false;
+        ctx.beginPath();
+        for (var i = 1; i < ac.length; i++) {
+            if (ac[i] < s0) { continue; }
+            if (ac[i - 1] > s1) { break; }
+            var x0 = pts[2 * i - 2];
+            var y0 = pts[2 * i - 1];
+            var x1 = pts[2 * i];
+            var y1 = pts[2 * i + 1];
+            var d = (ac[i] - ac[i - 1]) || 1;
+            if (!abierto) {
+                var k0 = Math.max(0, (s0 - ac[i - 1]) / d);
+                ctx.moveTo(x0 + (x1 - x0) * k0, y0 + (y1 - y0) * k0);
+                abierto = true;
+            }
+            var k1 = Math.min(1, (s1 - ac[i - 1]) / d);
+            ctx.lineTo(x0 + (x1 - x0) * k1, y0 + (y1 - y0) * k1);
+        }
+    }
+    function ruido(n) {
+        var v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+        return v - Math.floor(v);
+    }
+    function conAlfa(rgb, a) {
+        return rgb.replace("rgb(", "rgba(").replace(")", ", " + a.toFixed(3) + ")");
+    }
+    /* Etapas del proceso (lista junto al lienzo): marca la que va corriendo. */
+    function etapasDe(canvas) {
+        var fig = canvas.closest ? canvas.closest("figure") : null;
+        var lista = fig ? fig.querySelector("[data-qb-fases]") : null;
+        var items = lista ? todos("li", lista) : [];
+        var actual = -1;
+        var tono = "";
+        return function (i, color) {
+            if (!lista) { return; }
+            if (i !== actual) {
+                actual = i;
+                items.forEach(function (li, k) { li.classList.toggle("es-actual", k === i); });
+            }
+            if (color !== tono) {
+                tono = color;
+                lista.style.setProperty("--qb-lote", color);
+            }
+        };
+    }
+    var LOTES = ["#2f54c8", "#0f766e", "#9f1239", "#27272a"];
+
+    /* ---------------------------------------------------------------------
+       Jet de teñido, en corte. La tela va cosida en cuerda sin fin: el
+       torniquete la sube, la tobera la impulsa con el baño por el tubo y cae
+       plegada al fondo, donde avanza despacio hasta volver a subir. El baño
+       entra claro, toma el color y lo va cediendo a la tela.
+       ------------------------------------------------------------------ */
     function jet(canvas) {
-        var CICLO = 11;
-        var COLORES = ["#2f54c8", "#1b1b1f", "#0f766e", "#9f1239"];
-        var CRUDO = "#d8d2c4";
+        var CICLO = 17;
+        var CRUDO = "#e2dccd";
         var ritmo = acelera(canvas);
-        var reloj = 0;
-        var avance = 0;
-        var LINEA = [[345, 290], [345, 318], [70, 318], [70, 52], [219, 52], [219, 76]];
-        var largos = [];
-        var total = 0;
-        for (var i = 1; i < LINEA.length; i++) {
-            var l = Math.abs(LINEA[i][0] - LINEA[i - 1][0]) + Math.abs(LINEA[i][1] - LINEA[i - 1][1]);
-            largos.push(l);
-            total += l;
+        var marcar = etapasDe(canvas);
+        var reloj = CICLO * 0.36;
+        var recorrido = 0;
+        var VEL = 64;                   // avance de la cuerda
+        var VX0 = 96, VX1 = 544, VY0 = 150, VY1 = 296, VR = 73, VCY = 223;
+        var XR = 496, XF = 166;         // extremos de la pila de pliegues
+        var PASO = 20, AMP = 26, C = PASO / TAU, M = 0.46, DQ = TAU / 20;
+        var NIVEL = 238;
+
+        function piso(x) {
+            var dx = 0;
+            if (x < VX0 + VR) { dx = VX0 + VR - x; } else if (x > VX1 - VR) { dx = x - (VX1 - VR); }
+            var r = VR - 9;
+            return VCY + Math.sqrt(Math.max(0, r * r - dx * dx));
         }
-        function enLinea(d) {
-            d = ((d % total) + total) % total;
-            for (var j = 0; j < largos.length; j++) {
-                if (d <= largos[j]) {
-                    var k = d / largos[j];
-                    return [LINEA[j][0] + (LINEA[j + 1][0] - LINEA[j][0]) * k, LINEA[j][1] + (LINEA[j + 1][1] - LINEA[j][1]) * k];
-                }
-                d -= largos[j];
+        // largo de cuerda que guarda cada pliegue: con él la pila avanza al ritmo justo
+        var LARGO = (function () {
+            var l = 0, xa = 0, ya = 0;
+            for (var q = DQ; q <= TAU + 0.001; q += DQ) {
+                var x = -C * q + C * M * Math.sin(2 * q);
+                var y = -AMP * 0.97 * (1 + Math.sin(q));
+                l += Math.hypot(x - xa, y - ya);
+                xa = x; ya = y;
             }
-            return LINEA[0];
+            return l;
+        })();
+        function cuerda() {
+            var p = [];
+            var i, k, ang;
+            var qs = -(recorrido / LARGO) * TAU;
+            p.push(250, 104, 478, 104);
+            for (i = 1; i <= 8; i++) {
+                ang = -Math.PI / 2 + i / 8 * Math.PI / 2;
+                p.push(478 + 34 * Math.cos(ang), 138 + 34 * Math.sin(ang));
+            }
+            var yr = piso(XR);
+            p.push(512, 236);
+            for (i = 1; i <= 7; i++) {
+                k = i / 7;
+                p.push(512 + (XR - 512) * k * k, (1 - k) * (1 - k) * 236 + (1 - (1 - k) * (1 - k)) * yr);
+            }
+            var qe = qs + (XR - XF) / C;
+            for (var q = qs + DQ; q < qe; q += DQ) {
+                var base = XR - C * (q - qs);
+                var env = suave((XR - base) / 36) * suave((base - XF) / 40);
+                var n = Math.floor((q - 1.5 * Math.PI) / TAU);
+                var amp = AMP * env * (0.74 + 0.4 * ruido(n));
+                var sube = 1 + Math.sin(q);
+                p.push(base + C * M * Math.sin(2 * q) * env + 0.16 * amp * sube * (ruido(n + 40) - 0.2),
+                    piso(base) - amp * sube);
+            }
+            var yf = piso(XF);
+            for (i = 0; i <= 7; i++) {
+                k = i / 7;
+                p.push(XF + (150 - XF) * (1 - (1 - k) * (1 - k)), yf + (244 - yf) * k * k);
+            }
+            p.push(150, 92);
+            for (i = 1; i <= 10; i++) {
+                ang = Math.PI + i / 10 * 0.78 * Math.PI;
+                p.push(176 + 26 * Math.cos(ang), 92 + 26 * Math.sin(ang));
+            }
+            for (i = 1; i <= 8; i++) {
+                k = i / 8;
+                var u = 1 - k;
+                p.push(u * u * u * 196 + 3 * u * u * k * 204.9 + 3 * u * k * k * 218 + k * k * k * 232,
+                    u * u * u * 75.4 + 3 * u * u * k * 86.2 + 3 * u * k * k * 104 + k * k * k * 104);
+            }
+            p.push(250, 104);
+            return p;
         }
-        function cuerda(ctx, fase) {
+        function vasija(ctx) {
+            rectRedondo(ctx, VX0, VY0, VX1 - VX0, VY1 - VY0, VR);
+        }
+        function tubo(ctx) {
             ctx.beginPath();
-            ctx.moveTo(150, 240);
-            ctx.lineTo(150, 95);
-            ctx.arc(174, 95, 24, Math.PI, Math.PI * 1.5);
-            ctx.bezierCurveTo(196, 71, 196, 95, 220, 95);
-            ctx.lineTo(512, 95);
-            ctx.arcTo(540, 95, 540, 123, 28);
-            ctx.lineTo(540, 234);
-            for (var x = 538; x >= 150; x -= 3) {
-                var env = Math.pow(Math.sin(Math.PI * (540 - x) / 390), 0.55);
-                ctx.lineTo(x, 248 + 15 * env * Math.sin(x * 0.2 + fase));
-            }
+            ctx.moveTo(204, 104);
+            ctx.lineTo(478, 104);
+            ctx.arc(478, 138, 34, -Math.PI / 2, 0);
+            ctx.lineTo(512, 176);
         }
+        function recirculacion(ctx) {
+            ctx.beginPath();
+            ctx.moveTo(330, 294);
+            ctx.lineTo(330, 314);
+            ctx.arcTo(330, 324, 320, 324, 10);
+            ctx.lineTo(68, 324);
+            ctx.arcTo(58, 324, 58, 314, 10);
+            ctx.lineTo(58, 50);
+            ctx.arcTo(58, 40, 68, 40, 10);
+            ctx.lineTo(220, 40);
+            ctx.arcTo(230, 40, 230, 50, 10);
+            ctx.lineTo(230, 90);
+        }
+
         lienzo(canvas, function (ctx, w, h, t, dt) {
             ritmo.vel += (ritmo.objetivo - ritmo.vel) * Math.min(1, dt * 2.5);
             reloj += dt * ritmo.vel;
-            avance += dt * ritmo.vel * 60;
+            recorrido += dt * ritmo.vel * VEL;
             var lote = Math.floor(reloj / CICLO);
             var p = (reloj % CICLO) / CICLO;
-            var color = COLORES[lote % COLORES.length];
-            var k = suave(p / 0.72) * (1 - suave((p - 0.92) / 0.08));
-            var tono = mezclaHex(CRUDO, color, k);
-            var s = plano(ctx, w, h);
+            var color = LOTES[lote % LOTES.length];
 
-            // Piso
-            ctx.strokeStyle = "rgba(9, 9, 11, .22)";
+            // Guion del lote
+            var entra = suave(p / 0.07);
+            var sale = suave((p - 0.9) / 0.075);
+            var nivel = p < 0.6 ? suave(p / 0.075)
+                : p < 0.66 ? 1 - suave((p - 0.6) / 0.06)
+                : p < 0.84 ? suave((p - 0.66) / 0.06)
+                : 1 - suave((p - 0.84) / 0.05);
+            var carga = p < 0.66 ? suave((p - 0.085) / 0.06) * (1 - 0.8 * suave((p - 0.17) / 0.4)) : 0.06;
+            var tenido = suave((p - 0.11) / 0.45);
+            var calor = suave((p - 0.08) / 0.1) * (1 - suave((p - 0.5) / 0.1));
+            var tono = mezclaHex(CRUDO, color, tenido);
+            var bano = mezclaHex("#dbe5fb", color, 0.1 + 0.62 * carga);
+            var banoFuerte = mezclaHex("#9db4e8", color, 0.25 + 0.7 * carga);
+            var yBano = VY1 - (VY1 - NIVEL) * nivel;
+            var bombea = suave((nivel - 0.35) / 0.3);
+            marcar(p < 0.085 ? 0 : p < 0.6 ? 1 : p < 0.86 ? 2 : 3, tenido > 0.02 ? tono : "");
+
+            var s = plano(ctx, w, h);
+            var i;
+
+            // Piso y sombra
+            var sombra = ctx.createRadialGradient(320, 344, 10, 320, 344, 250);
+            sombra.addColorStop(0, "rgba(9, 9, 11, .10)");
+            sombra.addColorStop(1, "rgba(9, 9, 11, 0)");
+            ctx.save();
+            ctx.translate(0, 344);
+            ctx.scale(1, 0.05);
+            ctx.translate(0, -344);
+            ctx.fillStyle = sombra;
+            ctx.fillRect(40, 94, 560, 500);
+            ctx.restore();
+            ctx.strokeStyle = "#e4e4e7";
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(40, 340);
-            ctx.lineTo(600, 340);
+            ctx.moveTo(36, 344);
+            ctx.lineTo(604, 344);
             ctx.stroke();
-            ctx.strokeStyle = "rgba(9, 9, 11, .12)";
-            ctx.beginPath();
-            for (var px = 46; px < 600; px += 12) {
-                ctx.moveTo(px, 340);
-                ctx.lineTo(px - 5, 346);
-            }
-            ctx.stroke();
-            // Apoyos del tanque
-            ctx.strokeStyle = "rgba(9, 9, 11, .5)";
+
+            // Apoyos
+            ctx.strokeStyle = "#a1a1aa";
             ctx.lineWidth = 1.2;
-            [210, 480].forEach(function (ax) {
+            [196, 444].forEach(function (ax) {
                 ctx.beginPath();
-                ctx.moveTo(ax - 9, 288);
-                ctx.lineTo(ax - 14, 340);
-                ctx.moveTo(ax + 9, 288);
-                ctx.lineTo(ax + 14, 340);
-                ctx.moveTo(ax - 20, 340);
-                ctx.lineTo(ax + 20, 340);
+                ctx.moveTo(ax - 12, 290);
+                ctx.lineTo(ax - 18, 344);
+                ctx.moveTo(ax + 12, 290);
+                ctx.lineTo(ax + 18, 344);
+                ctx.moveTo(ax - 26, 344);
+                ctx.lineTo(ax + 26, 344);
+                ctx.moveTo(ax - 15, 318);
+                ctx.lineTo(ax + 15, 318);
                 ctx.stroke();
             });
 
-            // Línea de recirculación del baño
-            ctx.strokeStyle = "rgba(9, 9, 11, .5)";
-            ctx.lineWidth = 3.4;
-            ctx.beginPath();
-            ctx.moveTo(LINEA[0][0], LINEA[0][1]);
-            for (var li = 1; li < LINEA.length - 1; li++) {
-                ctx.arcTo(LINEA[li][0], LINEA[li][1], LINEA[li + 1][0], LINEA[li + 1][1], 9);
-            }
-            ctx.lineTo(219, 76);
+            // Recirculación del baño: bomba, intercambiador y regreso a la tobera
+            recirculacion(ctx);
+            ctx.strokeStyle = "#a1a1aa";
+            ctx.lineWidth = 6.4;
             ctx.stroke();
             ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 1.6;
+            ctx.lineWidth = 4.2;
             ctx.stroke();
-            ctx.fillStyle = mezclaHex("#93a4dc", color, 0.25 + 0.6 * k);
-            for (var d = 0; d < total; d += 30) {
-                var pt = enLinea(d + avance);
-                ctx.beginPath();
-                ctx.arc(pt[0], pt[1], 1.5, 0, TAU);
-                ctx.fill();
+            if (bombea > 0.01) {
+                ctx.save();
+                ctx.globalAlpha = bombea;
+                ctx.strokeStyle = banoFuerte;
+                ctx.lineWidth = 2.2;
+                ctx.setLineDash([7, 9]);
+                ctx.lineDashOffset = -reloj * 70;
+                ctx.stroke();
+                ctx.restore();
             }
-            // Intercambiador de calor
-            rectRedondo(ctx, 59, 168, 22, 60, 5);
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            ctx.strokeStyle = TINTA;
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
-            ctx.strokeStyle = CALOR;
-            ctx.globalAlpha = 0.45 + 0.4 * suave(p / 0.5);
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.moveTo(70, 174);
-            for (var z = 0; z < 8; z++) {
-                ctx.lineTo(z % 2 ? 64 : 76, 178 + z * 6.2);
-            }
-            ctx.lineTo(70, 222);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-            // Bomba
-            ctx.fillStyle = "#fff";
-            ctx.strokeStyle = TINTA;
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.arc(285, 318, 13, 0, TAU);
-            ctx.fill();
-            ctx.stroke();
-            ctx.lineWidth = 1.1;
-            rueda(ctx, 285, 318, 8.5, reloj * 5, 3);
-            ctx.fillStyle = TINTA;
-            ctx.beginPath();
-            ctx.arc(285, 318, 1.8, 0, TAU);
-            ctx.fill();
-
-            // Tubo de transporte (doble pared)
-            function tubo() {
-                ctx.beginPath();
-                ctx.moveTo(150, 190);
-                ctx.lineTo(150, 110);
-                ctx.moveTo(196, 95);
-                ctx.lineTo(512, 95);
-                ctx.arcTo(540, 95, 540, 123, 28);
-                ctx.lineTo(540, 190);
-            }
-            ctx.lineCap = "butt";
-            tubo();
-            ctx.strokeStyle = TINTA;
-            ctx.lineWidth = 27;
-            ctx.stroke();
-            tubo();
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 24.4;
-            ctx.stroke();
-            ctx.lineCap = "round";
-            // Bridas del tubo
-            ctx.strokeStyle = "rgba(9, 9, 11, .55)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            [300, 420].forEach(function (bx) {
-                ctx.moveTo(bx, 79);
-                ctx.lineTo(bx, 111);
-                ctx.moveTo(bx + 4, 79);
-                ctx.lineTo(bx + 4, 111);
-            });
-            ctx.stroke();
-
-            // Tanque
-            rectRedondo(ctx, 130, 170, 430, 120, 60);
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            // Carcasa del torniquete
-            ctx.beginPath();
-            ctx.arc(174, 95, 31, 0, TAU);
+            // intercambiador de calor
+            rectRedondo(ctx, 46, 132, 24, 96, 12);
             ctx.fillStyle = "#fff";
             ctx.fill();
             ctx.strokeStyle = TINTA;
             ctx.lineWidth = 1.3;
             ctx.stroke();
-            ctx.strokeStyle = "rgba(9, 9, 11, .45)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(174, 95, 19, 0, TAU);
-            ctx.stroke();
-            rueda(ctx, 174, 95, 19, reloj * 2.4, 6);
-            ctx.fillStyle = TINTA;
-            ctx.beginPath();
-            ctx.arc(174, 95, 3, 0, TAU);
-            ctx.fill();
-
-            // Tela en cuerda
-            var fase = reloj * 1.6;
-            cuerda(ctx, fase);
-            ctx.strokeStyle = "rgba(9, 9, 11, .55)";
-            ctx.lineWidth = 8.2;
-            ctx.stroke();
-            ctx.strokeStyle = tono;
-            ctx.lineWidth = 6.6;
-            ctx.stroke();
             ctx.save();
-            ctx.setLineDash([2, 10]);
-            ctx.lineDashOffset = -avance;
-            ctx.strokeStyle = "rgba(255, 255, 255, .55)";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
-
-            // Baño dentro del tanque
-            ctx.save();
-            rectRedondo(ctx, 130, 170, 430, 120, 60);
+            rectRedondo(ctx, 46, 132, 24, 96, 12);
             ctx.clip();
+            ctx.fillStyle = "rgba(232, 89, 12, " + (0.05 + 0.2 * calor).toFixed(3) + ")";
+            ctx.fillRect(46, 132, 24, 96);
+            ctx.strokeStyle = "rgba(232, 89, 12, " + (0.3 + 0.7 * calor).toFixed(3) + ")";
+            ctx.lineWidth = 1.3;
             ctx.beginPath();
-            ctx.moveTo(120, 300);
-            ctx.lineTo(120, 232);
-            for (var bx2 = 120; bx2 <= 570; bx2 += 6) {
-                ctx.lineTo(bx2, 232 + Math.sin(bx2 * 0.045 + reloj * 1.3) * 1.4);
-            }
-            ctx.lineTo(570, 300);
-            ctx.closePath();
-            var bano = ctx.createLinearGradient(0, 232, 0, 290);
-            bano.addColorStop(0, mezclaHex("#e8ecfa", color, 0.10 + 0.22 * k).replace("rgb", "rgba").replace(")", ", .55)"));
-            bano.addColorStop(1, mezclaHex("#dfe5f8", color, 0.18 + 0.30 * k).replace("rgb", "rgba").replace(")", ", .72)"));
-            ctx.fillStyle = bano;
-            ctx.fill();
-            ctx.strokeStyle = mezclaHex("#93a4dc", color, 0.3 + 0.5 * k);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (var bx3 = 120; bx3 <= 570; bx3 += 6) {
-                ctx.lineTo(bx3, 232 + Math.sin(bx3 * 0.045 + reloj * 1.3) * 1.4);
+            for (i = 0; i < 9; i++) {
+                ctx.moveTo(51, 142 + i * 9.6);
+                ctx.lineTo(65, 142 + i * 9.6);
             }
             ctx.stroke();
             ctx.restore();
+            // bomba
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.arc(236, 324, 13, 0, TAU);
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = "#71717a";
+            ctx.lineWidth = 1.2;
+            rueda(ctx, 236, 324, 8.5, reloj * 6 * (0.15 + bombea), 5);
+            ctx.fillStyle = TINTA;
+            ctx.beginPath();
+            ctx.arc(236, 324, 2, 0, TAU);
+            ctx.fill();
 
-            // Pared del tanque, costuras y mirilla
-            rectRedondo(ctx, 130, 170, 430, 120, 60);
+            // Tubo de transporte y cuello de subida
+            ctx.lineCap = "butt";
+            tubo(ctx);
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 31;
+            ctx.stroke();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 28;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(150, 176);
+            ctx.lineTo(150, 100);
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 25;
+            ctx.stroke();
+            if (bombea > 0.01) {
+                ctx.beginPath();
+                ctx.moveTo(250, 104);
+                ctx.lineTo(478, 104);
+                ctx.arc(478, 138, 34, -Math.PI / 2, 0);
+                ctx.lineTo(512, 176);
+                ctx.strokeStyle = conAlfa(bano, 0.75 * bombea);
+                ctx.lineWidth = 28;
+                ctx.stroke();
+            }
+            ctx.lineCap = "round";
+
+            // Autoclave
+            vasija(ctx);
+            var cuerpo = ctx.createLinearGradient(0, VY0, 0, VY1);
+            cuerpo.addColorStop(0, "#ffffff");
+            cuerpo.addColorStop(1, "#f6f6f7");
+            ctx.fillStyle = cuerpo;
+            ctx.fill();
+            // carcasa del torniquete
+            ctx.beginPath();
+            ctx.arc(176, 92, 37.5, 0, TAU);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
             ctx.strokeStyle = TINTA;
             ctx.lineWidth = 1.5;
             ctx.stroke();
-            ctx.strokeStyle = "rgba(9, 9, 11, .2)";
+            // Pared del autoclave; el cuello y el tubo se abren a él
+            vasija(ctx);
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 1.6;
+            ctx.stroke();
+            ctx.save();
+            vasija(ctx);
+            ctx.clip();
+            ctx.strokeStyle = "#ececee";
+            ctx.lineWidth = 9;
+            vasija(ctx);
+            ctx.stroke();
+            ctx.restore();
+            ctx.lineCap = "butt";
+            ctx.strokeStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(150, 98);
+            ctx.lineTo(150, 186);
+            ctx.lineWidth = 22;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(512, 140);
+            ctx.lineTo(512, 178);
+            ctx.lineWidth = 28;
+            ctx.stroke();
+            ctx.lineCap = "round";
+            if (bombea > 0.01) {
+                // el baño cae del tubo con la tela
+                ctx.fillStyle = conAlfa(bano, 0.75 * bombea);
+                ctx.beginPath();
+                ctx.moveTo(498, 138);
+                ctx.lineTo(526, 138);
+                ctx.lineTo(526, 176);
+                ctx.quadraticCurveTo(524, 210, 519, yBano + 2);
+                ctx.lineTo(505, yBano + 2);
+                ctx.quadraticCurveTo(500, 210, 498, 176);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Baño (fondo)
+            function superficie() {
+                ctx.beginPath();
+                ctx.moveTo(VX0 - 4, VY1 + 4);
+                for (var bx = VX0 - 4; bx <= VX1 + 4; bx += 6) {
+                    ctx.lineTo(bx, yBano + Math.sin(bx * 0.04 + reloj * 1.5) * 1.5 * nivel + Math.sin(bx * 0.11 - reloj * 2.3) * 0.8 * nivel);
+                }
+                ctx.lineTo(VX1 + 4, VY1 + 4);
+                ctx.closePath();
+            }
+            ctx.save();
+            vasija(ctx);
+            ctx.clip();
+            if (nivel > 0.01) {
+                superficie();
+                var fondo = ctx.createLinearGradient(0, yBano, 0, VY1);
+                fondo.addColorStop(0, conAlfa(bano, 0.7));
+                fondo.addColorStop(1, conAlfa(banoFuerte, 0.55));
+                ctx.fillStyle = fondo;
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Tela en cuerda
+            var pts = cuerda();
+            var ac = medirLinea(pts);
+            var total = ac[ac.length - 1];
+            var s0 = sale * total;
+            var s1 = entra * total;
+            if (s1 - s0 > 1) {
+                tramo(ctx, pts, ac, s0, s1);
+                ctx.strokeStyle = mezclaHex("#8b8778", color, tenido * 0.85);
+                ctx.globalAlpha = 0.9;
+                ctx.lineWidth = 8.2;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = tono;
+                ctx.lineWidth = 6.4;
+                ctx.stroke();
+                ctx.save();
+                ctx.lineCap = "butt";
+                ctx.setLineDash([1.3, 5.2]);
+                ctx.lineDashOffset = s0 - recorrido;
+                ctx.strokeStyle = "rgba(255, 255, 255, .34)";
+                ctx.lineWidth = 6.4;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Baño (frente): la tela sumergida se ve a través
+            ctx.save();
+            vasija(ctx);
+            ctx.clip();
+            if (nivel > 0.01) {
+                superficie();
+                ctx.fillStyle = conAlfa(bano, 0.42);
+                ctx.fill();
+                // burbujas: el baño hierve cuando sube la temperatura
+                ctx.strokeStyle = "rgba(255, 255, 255, " + (0.25 + 0.6 * calor).toFixed(3) + ")";
+                ctx.lineWidth = 1;
+                for (i = 0; i < 16; i++) {
+                    var kb = (reloj * (0.28 + 0.2 * ruido(i)) + ruido(i + 9)) % 1;
+                    var bx0 = VX0 + 40 + ruido(i + 3) * (VX1 - VX0 - 80);
+                    var by0 = piso(bx0) - kb * (piso(bx0) - yBano);
+                    if (by0 > yBano + 3) {
+                        ctx.beginPath();
+                        ctx.arc(bx0 + Math.sin(kb * 9 + i) * 2, by0, 1 + 1.6 * ruido(i + 5), 0, TAU);
+                        ctx.stroke();
+                    }
+                }
+                ctx.strokeStyle = conAlfa(banoFuerte, 0.9);
+                ctx.lineWidth = 1.1;
+                ctx.beginPath();
+                for (var sx = VX0; sx <= VX1; sx += 6) {
+                    ctx.lineTo(sx, yBano + Math.sin(sx * 0.04 + reloj * 1.5) * 1.5 * nivel + Math.sin(sx * 0.11 - reloj * 2.3) * 0.8 * nivel);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Costuras del autoclave
+            ctx.strokeStyle = "rgba(9, 9, 11, .10)";
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(190, 170);
-            ctx.lineTo(190, 290);
-            ctx.moveTo(500, 170);
-            ctx.lineTo(500, 290);
+            ctx.moveTo(VX0 + VR, VY0 + 1);
+            ctx.lineTo(VX0 + VR, VY1 - 1);
+            ctx.moveTo(VX1 - VR, VY0 + 1);
+            ctx.lineTo(VX1 - VR, VY1 - 1);
             ctx.stroke();
-            ctx.fillStyle = "rgba(255, 255, 255, .85)";
+
+            // Chorro del baño: empuja la cuerda por el tubo y cae con ella
+            if (bombea > 0.01) {
+                ctx.save();
+                ctx.globalAlpha = bombea;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = "rgba(255, 255, 255, .9)";
+                ctx.lineWidth = 1.3;
+                [-8.5, 8.5].forEach(function (dy, j) {
+                    ctx.beginPath();
+                    ctx.moveTo(254, 104 + dy);
+                    ctx.lineTo(478, 104 + dy);
+                    ctx.arc(478, 138, 34 - dy, -Math.PI / 2, 0);
+                    ctx.lineTo(512 - dy, yBano - 3);
+                    ctx.setLineDash([9, 16]);
+                    ctx.lineDashOffset = -reloj * 190 - j * 11;
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+
+            // Bridas del tubo
             ctx.strokeStyle = TINTA;
             ctx.lineWidth = 1.2;
             ctx.beginPath();
-            ctx.arc(345, 203, 15, 0, TAU);
-            ctx.fill();
+            [330, 420].forEach(function (bx) {
+                ctx.moveTo(bx, 86);
+                ctx.lineTo(bx, 122);
+                ctx.moveTo(bx + 4, 86);
+                ctx.lineTo(bx + 4, 122);
+            });
             ctx.stroke();
-            ctx.strokeStyle = "rgba(9, 9, 11, .35)";
-            ctx.lineWidth = 1;
+
+            // Torniquete
+            var giro = recorrido / 26;
+            ctx.strokeStyle = "#71717a";
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
-            ctx.arc(345, 203, 10.5, 0, TAU);
+            ctx.arc(176, 92, 21.5, 0, TAU);
+            ctx.stroke();
+            rueda(ctx, 176, 92, 21.5, giro, 8);
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.arc(176, 92, 5, 0, TAU);
+            ctx.fill();
             ctx.stroke();
 
             // Tobera
             ctx.fillStyle = TINTA;
             ctx.beginPath();
-            ctx.moveTo(204, 76);
-            ctx.lineTo(236, 76);
-            ctx.lineTo(252, 83);
-            ctx.lineTo(252, 107);
-            ctx.lineTo(236, 114);
-            ctx.lineTo(204, 114);
+            ctx.moveTo(210, 86);
+            ctx.lineTo(240, 86);
+            ctx.lineTo(256, 92);
+            ctx.lineTo(256, 116);
+            ctx.lineTo(240, 122);
+            ctx.lineTo(210, 122);
             ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, .5)";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255, 255, 255, .35)";
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(210, 82);
-            ctx.lineTo(210, 108);
-            ctx.moveTo(216, 82);
-            ctx.lineTo(216, 108);
+            ctx.moveTo(217, 92);
+            ctx.lineTo(217, 116);
+            ctx.moveTo(223, 92);
+            ctx.lineTo(223, 116);
             ctx.stroke();
-
-            // Avance del color
-            ctx.strokeStyle = "rgba(9, 9, 11, .16)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(430, 322);
-            ctx.lineTo(596, 322);
-            ctx.stroke();
-            ctx.strokeStyle = tono;
-            ctx.beginPath();
-            ctx.moveTo(430, 322);
-            ctx.lineTo(430 + 166 * k, 322);
-            ctx.stroke();
-            ctx.fillStyle = "#fff";
-            ctx.strokeStyle = TINTA;
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.arc(430 + 166 * k, 322, 4, 0, TAU);
-            ctx.fill();
-            ctx.stroke();
-
-            rotulo(ctx, s, T("TORNIQUETE"), 196, 46, 186, 70);
-            rotulo(ctx, s, T("TOBERA"), 262, 66, 246, 80);
-            rotulo(ctx, s, T("TELA EN CUERDA"), 356, 72, 380, 92);
-            rotulo(ctx, s, T("CALOR"), 88, 200);
-            rotulo(ctx, s, T("BOMBA"), 304, 332);
-            rotulo(ctx, s, T("BAÑO"), 570, 252, 552, 256);
-            rotulo(ctx, s, T("CRUDO"), 430, 312);
-            rotulo(ctx, s, T("COLOR PAREJO"), 596, 312, null, null, "right");
             ctx.restore();
         });
     }
 
+    /* ---------------------------------------------------------------------
+       Rama, vista en perspectiva. La tela entra húmeda y angosta, las cadenas
+       la toman por las orillas y la abren al ancho; cruza las cámaras de aire
+       caliente, donde se seca y se termofija, y sale derecha al rollo.
+       ------------------------------------------------------------------ */
     function rama(canvas) {
         var ritmo = acelera(canvas);
-        var avance = 0;
+        var marcar = etapasDe(canvas);
+        var LOTE = 780;
+        var avance = 300;
         var reloj = 0;
-        var CY = 158;
-        var M0 = 40;        // medio ancho de entrada
-        var M1 = 80;        // medio ancho pedido
-        var CAMARAS = [[196, 82], [282, 82], [368, 82], [454, 82]];
+        var AXX = 1, AXY = 0.17, AYX = -0.5, AYY = 0.42;
+        var OX = 84, OY = 150;
+        var M0 = 38, M1 = 78;
+        var X_IN = 8, X_ROLLO = 505, R_ROLLO = 21;
+        var H0 = 150, MOD = 68, NMOD = 4, H1 = H0 + MOD * NMOD;
+        var YB = 96, ZB = -40, ZT = 44, ZPISO = -40;
+
+        function P(x, y, z) {
+            return [OX + x * AXX + y * AYX, OY + x * AXY + y * AYY - (z || 0)];
+        }
         function medio(x) {
-            if (x <= 78) { return M0; }
-            if (x >= 176) { return M1; }
-            return M0 + (M1 - M0) * suave((x - 78) / 98);
+            return M0 + (M1 - M0) * suave((x - 40) / 110);
         }
-        function orilla(ctx, signo, x0, x1, mover) {
-            if (mover) { ctx.moveTo(x0, CY + signo * medio(x0)); }
-            var paso = x1 > x0 ? 4 : -4;
-            for (var x = x0; paso > 0 ? x <= x1 : x >= x1; x += paso) {
-                ctx.lineTo(x, CY + signo * medio(x));
+        // dibuja en el plano horizontal de altura z (x a lo largo, y a lo ancho)
+        function horizontal(ctx, z, fn) {
+            ctx.save();
+            ctx.transform(AXX, AXY, AYX, AYY, OX, OY - z);
+            fn();
+            ctx.restore();
+        }
+        // dibuja en el plano vertical a lo largo de la máquina (x a lo largo, z hacia arriba)
+        function lateral(ctx, y, fn) {
+            var o = P(0, y, 0);
+            ctx.save();
+            ctx.transform(AXX, AXY, 0, -1, o[0], o[1]);
+            fn();
+            ctx.restore();
+        }
+        function cara(ctx, pts) {
+            ctx.beginPath();
+            pts.forEach(function (q, i) {
+                var c = P(q[0], q[1], q[2]);
+                if (i) { ctx.lineTo(c[0], c[1]); } else { ctx.moveTo(c[0], c[1]); }
+            });
+            ctx.closePath();
+        }
+        function linea(ctx, a, b) {
+            var c0 = P(a[0], a[1], a[2]);
+            var c1 = P(b[0], b[1], b[2]);
+            ctx.moveTo(c0[0], c0[1]);
+            ctx.lineTo(c1[0], c1[1]);
+        }
+        function colorEn(x) {
+            var n = Math.floor((x - avance) / LOTE);
+            return LOTES[((-n % LOTES.length) + LOTES.length) % LOTES.length];
+        }
+        function orillas(ctx, x0, x1) {
+            var x;
+            ctx.beginPath();
+            ctx.moveTo(x0, -medio(x0));
+            for (x = x0; x < x1; x += 5) { ctx.lineTo(x, -medio(x)); }
+            ctx.lineTo(x1, -medio(x1));
+            ctx.lineTo(x1, medio(x1));
+            for (x = x1; x > x0; x -= 5) { ctx.lineTo(x, medio(x)); }
+            ctx.lineTo(x0, medio(x0));
+            ctx.closePath();
+        }
+        // cilindro acostado a lo ancho de la máquina
+        function cilindro(ctx, x, z, r, y0, y1, relleno, borde) {
+            var dx = -AYX, dy = AYY;      // perpendicular al eje, en pantalla
+            var amax = 0, amin = 0, vmax = -1e9, vmin = 1e9;
+            for (var a = 0; a < TAU; a += 0.05) {
+                var px = Math.sin(a) * r * AXX;
+                var py = Math.sin(a) * r * AXY - Math.cos(a) * r;
+                var v = px * dy + py * dx;
+                if (v > vmax) { vmax = v; amax = a; }
+                if (v < vmin) { vmin = v; amin = a; }
             }
-            ctx.lineTo(x1, CY + signo * medio(x1));
+            function borda(y, a) { return P(x + Math.sin(a) * r, y, z + Math.cos(a) * r); }
+            function tapa(y) {
+                ctx.beginPath();
+                for (var a2 = 0; a2 <= TAU + 0.01; a2 += 0.12) {
+                    var c = borda(y, a2);
+                    if (a2) { ctx.lineTo(c[0], c[1]); } else { ctx.moveTo(c[0], c[1]); }
+                }
+                ctx.closePath();
+            }
+            var a0 = borda(y0, amax), a1 = borda(y1, amax), b0 = borda(y0, amin), b1 = borda(y1, amin);
+            ctx.fillStyle = relleno;
+            ctx.strokeStyle = borde;
+            tapa(y0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(a0[0], a0[1]);
+            ctx.lineTo(a1[0], a1[1]);
+            ctx.lineTo(b1[0], b1[1]);
+            ctx.lineTo(b0[0], b0[1]);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(a0[0], a0[1]);
+            ctx.lineTo(a1[0], a1[1]);
+            ctx.moveTo(b0[0], b0[1]);
+            ctx.lineTo(b1[0], b1[1]);
+            ctx.stroke();
+            tapa(y1);
+            ctx.fill();
+            ctx.stroke();
+            return { amin: amin, amax: amax, borda: borda };
         }
+
         lienzo(canvas, function (ctx, w, h, t, dt) {
             ritmo.vel += (ritmo.objetivo - ritmo.vel) * Math.min(1, dt * 2.5);
             reloj += dt * ritmo.vel;
-            avance += dt * ritmo.vel * 34;
+            avance += dt * ritmo.vel * 40;
+            var costura = ((avance % LOTE) + LOTE) % LOTE - 70;      // x de la unión entre lotes
+            var cabeza = colorEn(costura - 1);
+            marcar(costura < 40 ? 0 : costura < H0 ? 1 : costura < H1 ? 2 : 3, cabeza);
             var s = plano(ctx, w, h);
+            var i, x, c;
+            ctx.translate(320, 180);
+            ctx.scale(0.93, 0.93);
+            ctx.translate(-320, -180);
 
-            // Tela
-            ctx.beginPath();
-            orilla(ctx, -1, 24, 566, true);
-            orilla(ctx, 1, 566, 24, false);
-            ctx.closePath();
-            var tinte = ctx.createLinearGradient(24, 0, 566, 0);
-            tinte.addColorStop(0, "rgba(47, 84, 200, .26)");
-            tinte.addColorStop(0.3, "rgba(47, 84, 200, .20)");
-            tinte.addColorStop(0.85, "rgba(47, 84, 200, .08)");
-            tinte.addColorStop(1, "rgba(47, 84, 200, .06)");
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            ctx.fillStyle = tinte;
-            ctx.fill();
+            // Sombra en el piso
             ctx.save();
-            ctx.clip();
-            // columnas de malla: siguen el ensanche
-            ctx.strokeStyle = "rgba(47, 84, 200, .26)";
-            ctx.lineWidth = 0.7;
-            ctx.beginPath();
-            for (var c = -5; c <= 5; c++) {
-                for (var x = 24; x <= 566; x += 6) {
-                    var y = CY + (c / 6) * medio(x);
-                    if (x === 24) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
-                }
-            }
-            ctx.stroke();
-            // pasadas: avanzan con la tela
-            ctx.strokeStyle = "rgba(47, 84, 200, .20)";
-            ctx.beginPath();
-            for (var xp = 24 + (avance % 12); xp <= 566; xp += 12) {
-                ctx.moveTo(xp, CY - medio(xp));
-                ctx.lineTo(xp, CY + medio(xp));
-            }
-            ctx.stroke();
+            ctx.shadowColor = "rgba(9, 9, 11, .10)";
+            ctx.shadowBlur = 30 * s;
+            ctx.shadowOffsetY = 6 * s;
+            ctx.fillStyle = "rgba(9, 9, 11, .025)";
+            cara(ctx, [[-40, -60, ZPISO], [X_ROLLO + 24, -92, ZPISO], [X_ROLLO + 24, 92, ZPISO], [-6, 60, ZPISO]]);
+            ctx.fill();
             ctx.restore();
 
-            // Cámaras de aire caliente
-            CAMARAS.forEach(function (cam, i) {
-                var x0 = cam[0];
-                var an = cam[1];
-                rectRedondo(ctx, x0, CY - 104, an, 208, 7);
-                ctx.fillStyle = "rgba(232, 89, 12, .045)";
-                ctx.fill();
-                ctx.strokeStyle = "rgba(9, 9, 11, .62)";
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-                // toberas de aire: rendijas que laten
-                ctx.lineWidth = 1;
-                for (var r = 0; r < 5; r++) {
-                    var xr = x0 + 13 + r * 14;
-                    var pulso = 0.16 + 0.22 * (0.5 + 0.5 * Math.sin(reloj * 3 - r * 0.9 - i * 1.7));
-                    ctx.strokeStyle = "rgba(232, 89, 12, " + pulso.toFixed(3) + ")";
+            // Bastidor: patas y largueros
+            ctx.strokeStyle = "#c4c4cc";
+            ctx.lineWidth = 1.1;
+            ctx.beginPath();
+            [-1, 1].forEach(function (lado) {
+                [44, 100, 440, 476].forEach(function (px) {
+                    var m = medio(px) + 4;
+                    linea(ctx, [px, lado * m, 0], [px, lado * m, ZPISO]);
+                });
+                linea(ctx, [44, lado * (medio(44) + 4), -22], [100, lado * (medio(100) + 4), -22]);
+                linea(ctx, [440, lado * (M1 + 4), -22], [476, lado * (M1 + 4), -22]);
+            });
+            ctx.stroke();
+
+            // Carro de tela húmeda y subida a la entrada
+            var XC = -34, ZC = -20;
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = "#a1a1aa";
+            ctx.lineWidth = 1.1;
+            cara(ctx, [[XC - 16, -M0 - 8, ZC], [XC + 12, -M0 - 8, ZC], [XC + 12, M0 + 8, ZC], [XC - 16, M0 + 8, ZC]]);
+            ctx.fill();
+            ctx.stroke();
+            cara(ctx, [[XC - 16, M0 + 8, ZC], [XC + 12, M0 + 8, ZC], [XC + 12, M0 + 8, ZPISO], [XC - 16, M0 + 8, ZPISO]]);
+            ctx.fill();
+            ctx.stroke();
+            cara(ctx, [[XC + 12, -M0 - 8, ZC], [XC + 12, M0 + 8, ZC], [XC + 12, M0 + 8, ZPISO], [XC + 12, -M0 - 8, ZPISO]]);
+            ctx.fill();
+            ctx.stroke();
+            var tIn = colorEn(X_IN);
+            cara(ctx, [[XC, -M0, ZC], [XC, M0, ZC], [X_IN, M0, 0], [X_IN, -M0, 0]]);
+            ctx.fillStyle = mezclaHex(tIn, "#ffffff", 0.52);
+            ctx.fill();
+            ctx.strokeStyle = conAlfa(mezclaHex(tIn, "#ffffff", 0), 0.5);
+            ctx.lineWidth = 0.75;
+            ctx.beginPath();
+            for (var ks = ((avance % 9) / 9) / 5; ks < 1; ks += 0.2) {
+                linea(ctx, [XC + (X_IN - XC) * ks, -M0, ZC * (1 - ks)], [XC + (X_IN - XC) * ks, M0, ZC * (1 - ks)]);
+            }
+            for (c = -8; c <= 8; c++) {
+                linea(ctx, [XC, c / 9 * M0, ZC], [X_IN, c / 9 * M0, 0]);
+            }
+            ctx.stroke();
+
+            // Fondo y pared de atrás de las cámaras
+            ctx.fillStyle = "rgba(244, 244, 245, .9)";
+            ctx.strokeStyle = "rgba(9, 9, 11, .22)";
+            ctx.lineWidth = 1;
+            cara(ctx, [[H0, -YB, ZB], [H1, -YB, ZB], [H1, YB, ZB], [H0, YB, ZB]]);
+            ctx.fill();
+            cara(ctx, [[H0, -YB, ZB], [H1, -YB, ZB], [H1, -YB, ZT], [H0, -YB, ZT]]);
+            ctx.fillStyle = "rgba(250, 250, 250, .9)";
+            ctx.fill();
+            ctx.stroke();
+            cara(ctx, [[H0, -YB, ZB], [H0, YB, ZB], [H0, YB, ZT], [H0, -YB, ZT]]);
+            ctx.fill();
+            ctx.stroke();
+
+            // Tela
+            horizontal(ctx, 0, function () {
+                // color por franjas: húmeda al entrar, más clara conforme seca
+                for (x = X_IN; x < X_ROLLO; x += 5) {
+                    var seca = suave((x - H0 + 20) / 230);
+                    var x2 = Math.min(X_ROLLO, x + 5.6);
+                    ctx.fillStyle = mezclaHex(colorEn(x + 2.5), "#ffffff", 0.52 + 0.3 * seca);
                     ctx.beginPath();
-                    ctx.moveTo(xr, CY - M1 + 8);
-                    ctx.lineTo(xr, CY + M1 - 8);
-                    ctx.stroke();
-                }
-                // ventilador
-                [-1, 1].forEach(function (lado) {
-                    var vy = CY + lado * 92;
-                    ctx.fillStyle = "#fff";
-                    ctx.strokeStyle = "rgba(9, 9, 11, .62)";
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(x0 + an / 2, vy, 7, 0, TAU);
+                    ctx.moveTo(x, -medio(x));
+                    ctx.lineTo(x2, -medio(x2));
+                    ctx.lineTo(x2, medio(x2));
+                    ctx.lineTo(x, medio(x));
+                    ctx.closePath();
                     ctx.fill();
+                }
+                // malla: columnas que se abren con el ancho y pasadas que entran
+                // arqueadas y salen derechas
+                var cortes = [X_IN, Math.max(X_IN, Math.min(X_ROLLO, costura)), X_ROLLO];
+                for (var k = 0; k < 2; k++) {
+                    var xa = cortes[k], xb = cortes[k + 1];
+                    if (xb - xa < 1) { continue; }
+                    var tinta = colorEn((xa + xb) / 2);
+                    ctx.save();
+                    orillas(ctx, xa, xb);
+                    ctx.clip();
+                    ctx.strokeStyle = conAlfa(mezclaHex(tinta, "#ffffff", 0), 0.42);
+                    ctx.lineWidth = 0.75;
+                    ctx.beginPath();
+                    for (c = -8; c <= 8; c++) {
+                        for (x = xa; x <= xb + 6; x += 6) {
+                            var yy = (c / 9) * medio(x);
+                            if (x === xa) { ctx.moveTo(x, yy); } else { ctx.lineTo(x, yy); }
+                        }
+                    }
                     ctx.stroke();
-                    rueda(ctx, x0 + an / 2, vy, 5, reloj * 6 * lado + i, 4);
+                    ctx.strokeStyle = conAlfa(mezclaHex(tinta, "#ffffff", 0), 0.5);
+                    ctx.beginPath();
+                    for (var xp = X_IN - 30 + (avance % 9); xp <= X_ROLLO + 4; xp += 9) {
+                        var chueca = 1 - suave((xp - 30) / 135);
+                        var m = medio(xp);
+                        for (var f = -1; f <= 1.001; f += 0.125) {
+                            var xo = xp - chueca * (15 * (1 - f * f) + 7 * f + 2.5 * Math.sin(f * 5 + xp * 0.3));
+                            if (f === -1) { ctx.moveTo(xo, f * m); } else { ctx.lineTo(xo, f * m); }
+                        }
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                // orillas y unión entre lotes
+                ctx.lineWidth = 1;
+                [-1, 1].forEach(function (lado) {
+                    ctx.strokeStyle = "rgba(9, 9, 11, .28)";
+                    ctx.beginPath();
+                    for (x = X_IN; x <= X_ROLLO; x += 5) {
+                        ctx.lineTo(x, lado * medio(x));
+                    }
+                    ctx.stroke();
+                });
+                if (costura > X_IN && costura < X_ROLLO) {
+                    ctx.strokeStyle = "rgba(9, 9, 11, .55)";
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([3, 2.5]);
+                    ctx.beginPath();
+                    ctx.moveTo(costura, -medio(costura));
+                    ctx.lineTo(costura, medio(costura));
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                // calor bajo las cámaras
+                ctx.fillStyle = "rgba(232, 89, 12, .07)";
+                ctx.fillRect(H0, -M1, H1 - H0, M1 * 2);
+            });
+
+            // Cadenas: riel, agujas que avanzan con la tela y piñones
+            horizontal(ctx, 0.5, function () {
+                [-1, 1].forEach(function (lado) {
+                    ctx.beginPath();
+                    for (x = 34; x <= 474; x += 4) {
+                        ctx.lineTo(x, lado * (medio(x) + 3));
+                    }
+                    ctx.strokeStyle = TINTA;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.save();
+                    ctx.lineCap = "butt";
+                    ctx.setLineDash([1.3, 5.7]);
+                    ctx.lineDashOffset = -avance;
+                    ctx.lineWidth = 6.5;
+                    ctx.strokeStyle = "rgba(9, 9, 11, .62)";
+                    ctx.stroke();
+                    ctx.restore();
+                    [34, 474].forEach(function (xs) {
+                        var ys = lado * (medio(xs) + 3);
+                        ctx.fillStyle = "#fff";
+                        ctx.strokeStyle = TINTA;
+                        ctx.lineWidth = 1.3;
+                        ctx.beginPath();
+                        ctx.arc(xs, ys, 8, 0, TAU);
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.strokeStyle = "#71717a";
+                        ctx.lineWidth = 1;
+                        rueda(ctx, xs, ys, 5.5, avance * 0.12 * lado, 6);
+                    });
                 });
             });
 
-            // Cadenas: riel, agujas que avanzan y piñones
-            [-1, 1].forEach(function (signo) {
-                ctx.beginPath();
-                orilla(ctx, signo, 64, 548, true);
-                ctx.strokeStyle = TINTA;
-                ctx.lineWidth = 1.6;
-                ctx.setLineDash([]);
-                ctx.stroke();
-                ctx.save();
-                ctx.translate(0, signo * 3.2);
-                ctx.beginPath();
-                orilla(ctx, signo, 64, 548, true);
-                ctx.setLineDash([1.4, 6.6]);
-                ctx.lineDashOffset = -avance;
-                ctx.lineWidth = 4;
-                ctx.lineCap = "butt";
-                ctx.strokeStyle = "rgba(9, 9, 11, .7)";
-                ctx.stroke();
-                ctx.restore();
-                [64, 548].forEach(function (xs) {
-                    var ys = CY + signo * (medio(xs) + 3);
+            // Toberas de aire caliente sobre la tela
+            horizontal(ctx, 15, function () {
+                ctx.lineWidth = 2.2;
+                for (i = 0; i < NMOD * 5; i++) {
+                    var xt = H0 + 9 + i * (MOD / 5);
+                    var pulso = 0.5 + 0.5 * Math.sin(reloj * 2.6 - i * 0.55);
+                    ctx.strokeStyle = "rgba(232, 89, 12, " + (0.2 + 0.5 * pulso).toFixed(3) + ")";
+                    ctx.beginPath();
+                    ctx.moveTo(xt, -M1 + 4);
+                    ctx.lineTo(xt, M1 - 4);
+                    ctx.stroke();
+                }
+            });
+
+            // Cámaras: cristal al frente, a la salida y arriba
+            ctx.strokeStyle = "rgba(9, 9, 11, .6)";
+            ctx.lineWidth = 1.2;
+            cara(ctx, [[H0, YB, ZB], [H1, YB, ZB], [H1, YB, ZT], [H0, YB, ZT]]);
+            ctx.fillStyle = "rgba(255, 255, 255, .66)";
+            ctx.fill();
+            ctx.stroke();
+            cara(ctx, [[H1, -YB, ZB], [H1, YB, ZB], [H1, YB, ZT], [H1, -YB, ZT]]);
+            ctx.fillStyle = "rgba(255, 255, 255, .5)";
+            ctx.fill();
+            ctx.stroke();
+            // boca de salida
+            ctx.strokeStyle = "rgba(9, 9, 11, .5)";
+            ctx.lineWidth = 1;
+            cara(ctx, [[H1, -M1 - 8, -4], [H1, M1 + 8, -4], [H1, M1 + 8, 6], [H1, -M1 - 8, 6]]);
+            ctx.stroke();
+            lateral(ctx, YB, function () {
+                for (i = 0; i < NMOD; i++) {
+                    var xm = H0 + i * MOD;
+                    if (i) {
+                        ctx.strokeStyle = "rgba(9, 9, 11, .35)";
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(xm, ZT);
+                        ctx.lineTo(xm, ZB);
+                        ctx.stroke();
+                    }
+                    // ventana: se ve el calor adentro
+                    var brillo = 0.5 + 0.5 * Math.sin(reloj * 1.7 - i * 1.1);
+                    rectRedondo(ctx, xm + 11, ZT - 34, MOD - 22, 22, 4);
+                    ctx.fillStyle = "rgba(232, 89, 12, " + (0.1 + 0.14 * brillo).toFixed(3) + ")";
+                    ctx.fill();
+                    ctx.strokeStyle = "rgba(9, 9, 11, .5)";
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.strokeStyle = "rgba(9, 9, 11, .4)";
+                    ctx.beginPath();
+                    ctx.moveTo(xm + MOD / 2 - 7, ZT - 44);
+                    ctx.lineTo(xm + MOD / 2 + 7, ZT - 44);
+                    ctx.moveTo(xm + (i ? 0 : 0), -22);
+                    ctx.lineTo(xm + MOD, -22);
+                    ctx.stroke();
+                }
+            });
+            cara(ctx, [[H0, -YB, ZT], [H1, -YB, ZT], [H1, YB, ZT], [H0, YB, ZT]]);
+            ctx.fillStyle = "rgba(255, 255, 255, .5)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(9, 9, 11, .6)";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            horizontal(ctx, ZT, function () {
+                for (i = 0; i < NMOD; i++) {
+                    var xc = H0 + (i + 0.5) * MOD;
+                    if (i) {
+                        ctx.strokeStyle = "rgba(9, 9, 11, .3)";
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(H0 + i * MOD, -YB);
+                        ctx.lineTo(H0 + i * MOD, YB);
+                        ctx.stroke();
+                    }
+                    // ventilador de circulación
+                    ctx.fillStyle = "rgba(255, 255, 255, .85)";
+                    ctx.strokeStyle = TINTA;
+                    ctx.lineWidth = 1.3;
+                    ctx.beginPath();
+                    ctx.arc(xc, 26, 21, 0, TAU);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.strokeStyle = "rgba(9, 9, 11, .22)";
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(xc, 26, 15, 0, TAU);
+                    ctx.stroke();
+                    ctx.strokeStyle = "#52525b";
+                    ctx.lineWidth = 1.5;
+                    rueda(ctx, xc, 26, 15, reloj * 5 * (i % 2 ? -1 : 1) + i, 5);
+                    ctx.fillStyle = TINTA;
+                    ctx.beginPath();
+                    ctx.arc(xc, 26, 3, 0, TAU);
+                    ctx.fill();
+                    // base del escape
                     ctx.fillStyle = "#fff";
                     ctx.strokeStyle = TINTA;
                     ctx.lineWidth = 1.2;
                     ctx.beginPath();
-                    ctx.arc(xs, ys, 6.5, 0, TAU);
+                    ctx.arc(xc, -56, 10, 0, TAU);
                     ctx.fill();
                     ctx.stroke();
-                    ctx.lineWidth = 1;
-                    rueda(ctx, xs, ys, 4.5, avance * 0.15, 5);
-                });
+                }
             });
+            // Escapes: chimenea corta y vapor de la tela que seca
+            for (i = 0; i < NMOD; i++) {
+                var e0 = P(H0 + (i + 0.5) * MOD, -56, ZT);
+                var ancho = 10 * 1.0;
+                ctx.fillStyle = "#fff";
+                ctx.strokeStyle = TINTA;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(e0[0] - ancho, e0[1]);
+                ctx.lineTo(e0[0] - ancho, e0[1] - 16);
+                ctx.lineTo(e0[0] + ancho, e0[1] - 16);
+                ctx.lineTo(e0[0] + ancho, e0[1]);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(e0[0], e0[1] - 16, ancho, 4.4, 0.12, 0, TAU);
+                ctx.fill();
+                ctx.stroke();
+                var fuerza = 1 - i / NMOD * 0.7;      // seca más al principio
+                ctx.lineWidth = 1.2;
+                for (var v = -1; v <= 1; v++) {
+                    for (var tz = 0; tz < 10; tz++) {
+                        var k0 = tz / 10, k1 = (tz + 1) / 10;
+                        var fase = reloj * 3.2 + v * 1.9 + i * 0.8;
+                        ctx.strokeStyle = "rgba(113, 113, 122, " + (0.75 * fuerza * (1 - k0) * (0.35 + 0.65 * k0 * 3 > 1 ? 1 : 0.35 + 0.65 * k0 * 3)).toFixed(3) + ")";
+                        ctx.beginPath();
+                        ctx.moveTo(e0[0] + v * 5 + Math.sin(k0 * 7 - fase) * 2.6 * k0 * 2, e0[1] - 21 - k0 * 34);
+                        ctx.lineTo(e0[0] + v * 5 + Math.sin(k1 * 7 - fase) * 2.6 * k1 * 2, e0[1] - 21 - k1 * 34);
+                        ctx.stroke();
+                    }
+                }
+            }
 
-            // Rodillo de entrada y rollo terminado
-            rectRedondo(ctx, 16, CY - M0 - 8, 8, M0 * 2 + 16, 4);
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            ctx.strokeStyle = TINTA;
+            // Rollo terminado
+            // al llegar la unión entre lotes se cambia de rollo
+            var tRollo = costura > X_ROLLO
+                ? mezclaHex(colorEn(costura + 1), colorEn(X_ROLLO), suave((costura - X_ROLLO) / 60))
+                : mezclaHex(colorEn(X_ROLLO), colorEn(X_ROLLO), 0);
+            var seco = "rgb(" + tRollo.slice(4, -1).split(",").map(function (v) { return Math.round(+v + (255 - +v) * 0.82); }).join(",") + ")";
+            ctx.strokeStyle = "#a1a1aa";
             ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            [-1, 1].forEach(function (lado) {
+                var yy2 = lado * (M1 + 7);
+                linea(ctx, [X_ROLLO, yy2, -R_ROLLO], [X_ROLLO - 13, yy2, ZPISO]);
+                linea(ctx, [X_ROLLO, yy2, -R_ROLLO], [X_ROLLO + 13, yy2, ZPISO]);
+            });
             ctx.stroke();
-            rectRedondo(ctx, 566, CY - M1 - 6, 36, M1 * 2 + 12, 9);
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            ctx.fillStyle = "rgba(47, 84, 200, .07)";
-            ctx.fill();
-            ctx.strokeStyle = TINTA;
-            ctx.lineWidth = 1.4;
-            ctx.stroke();
-            ctx.save();
-            rectRedondo(ctx, 566, CY - M1 - 6, 36, M1 * 2 + 12, 9);
-            ctx.clip();
-            ctx.strokeStyle = "rgba(47, 84, 200, .30)";
+            ctx.lineWidth = 1.2;
+            var rollo = cilindro(ctx, X_ROLLO, -R_ROLLO, R_ROLLO, -M1, M1, seco, "rgba(9, 9, 11, .7)");
+            // pasadas sobre el rollo: giran con él
+            ctx.strokeStyle = conAlfa(tRollo, 0.42);
             ctx.lineWidth = 0.8;
             ctx.beginPath();
-            for (var xe = 566 + (avance * 0.5 % 6); xe <= 602; xe += 6) {
-                ctx.moveTo(xe, CY - M1 - 6);
-                ctx.lineTo(xe, CY + M1 + 6);
+            var desde = rollo.amin, hasta = rollo.amax;
+            if (hasta < desde) { hasta += TAU; }
+            if (!(desde <= TAU && TAU <= hasta) && !(desde <= 0 && 0 <= hasta)) { var tmp = desde; desde = hasta; hasta = tmp + TAU; }
+            var pasoA = 9 / R_ROLLO;
+            for (var a = desde + ((avance / R_ROLLO - desde) % pasoA + pasoA) % pasoA; a < hasta; a += pasoA) {
+                var r0 = rollo.borda(-M1, a), r1 = rollo.borda(M1, a);
+                ctx.moveTo(r0[0], r0[1]);
+                ctx.lineTo(r1[0], r1[1]);
             }
             ctx.stroke();
+            // cara del rollo: capas y mandril
+            var eje = P(X_ROLLO, M1, -R_ROLLO);
+            ctx.save();
+            ctx.transform(AXX, AXY, 0, -1, eje[0], eje[1]);
+            ctx.strokeStyle = conAlfa(tRollo, 0.45);
+            ctx.lineWidth = 0.8;
+            [15.5, 10.5].forEach(function (rr) {
+                ctx.beginPath();
+                ctx.arc(0, 0, rr, 0, TAU);
+                ctx.stroke();
+            });
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = TINTA;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 5.5, 0, TAU);
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = "#71717a";
+            ctx.lineWidth = 1;
+            rueda(ctx, 0, 0, 5.5, -avance / R_ROLLO, 3);
             ctx.restore();
 
-            // Cotas de ancho
-            function cota(x, m, color) {
-                ctx.strokeStyle = color;
-                ctx.fillStyle = color;
-                ctx.lineWidth = 0.9;
-                ctx.beginPath();
-                ctx.moveTo(x, CY - m + 3);
-                ctx.lineTo(x, CY + m - 3);
-                ctx.moveTo(x - 4, CY - m);
-                ctx.lineTo(x + 4, CY - m);
-                ctx.moveTo(x - 4, CY + m);
-                ctx.lineTo(x + 4, CY + m);
-                ctx.stroke();
-                [-1, 1].forEach(function (sg) {
+            // Cotas de ancho: angosta al entrar, al ancho pedido al salir
+            horizontal(ctx, 1, function () {
+                [[H1 + 40, M1, ACENTO]].forEach(function (ct) {
+                    var cx = ct[0], m = ct[1] - 4;
+                    ctx.strokeStyle = ct[2];
+                    ctx.fillStyle = ct[2];
+                    ctx.lineWidth = 1.1;
                     ctx.beginPath();
-                    ctx.moveTo(x, CY + sg * m);
-                    ctx.lineTo(x - 2.6, CY + sg * (m - 6));
-                    ctx.lineTo(x + 2.6, CY + sg * (m - 6));
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.moveTo(cx, -m + 4);
+                    ctx.lineTo(cx, m - 4);
+                    ctx.stroke();
+                    [-1, 1].forEach(function (sg) {
+                        ctx.beginPath();
+                        ctx.moveTo(cx, sg * m);
+                        ctx.lineTo(cx - 3.4, sg * (m - 8));
+                        ctx.lineTo(cx + 3.4, sg * (m - 8));
+                        ctx.closePath();
+                        ctx.fill();
+                    });
                 });
-            }
-            cota(42, M0, "rgba(9, 9, 11, .55)");
-            cota(584, M1, ACENTO);
-
-            // Eje del proceso
-            ctx.strokeStyle = "rgba(9, 9, 11, .28)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(16, 300);
-            ctx.lineTo(602, 300);
-            [16, 78, 190, 542, 602].forEach(function (xt) {
-                ctx.moveTo(xt, 296);
-                ctx.lineTo(xt, 304);
             });
-            ctx.stroke();
-            var xq = 16 + ((avance * 1.4) % 586);
-            ctx.fillStyle = ACENTO;
-            ctx.beginPath();
-            ctx.arc(xq, 300, 2.6, 0, TAU);
-            ctx.fill();
-            rotulo(ctx, s, T("ENTRADA"), 18, 320);
-            rotulo(ctx, s, T("ENSANCHE"), 106, 320);
-            rotulo(ctx, s, T("SECADO Y TERMOFIJADO"), 310, 320);
-            rotulo(ctx, s, T("ROLLO"), 602, 320, null, null, "right");
-            rotulo(ctx, s, T("CADENA DE AGUJAS"), 96, 34, 128, CY - medio(128) - 2);
-            rotulo(ctx, s, T("ANCHO PEDIDO"), 600, 44, 584, CY - M1 + 14, "right");
             ctx.restore();
         });
     }

@@ -58,7 +58,7 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
         for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'Jets de teñido', 'Ramas',
-                      'Entretelas fusionables, no tejido tramado', 'id="maquinaria"', 'data-qb-anim="jet"', 'data-qb-anim="rama"'):
+                      'Entretelas fusionables, no tejido tramado', 'id="maquinaria"', 'data-qb-anim="jet"', 'data-qb-anim="rama"', 'data-qb-fases'):
             self.assertIn(texto, planta, texto)
         nosotros = self.url_open('/nosotros').text
         for texto in ('Misión', 'Visión 2030', 'Enfoque al cliente', 'Experiencia y especialización'):

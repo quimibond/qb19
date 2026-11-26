@@ -342,3 +342,13 @@ ya no se usa el logotipo cargado en el sitio web) y la portada abre con una
 entrada de dos segundos en la que el logotipo se dibuja con un solo trazo.
 Es solo CSS, no bloquea clics ni desplazamiento, sale una vez por visita
 (`sessionStorage`) y no aparece con «reducir movimiento».
+
+Desde 1.16.0 las animaciones del jet y de la rama de `/planta` son nuevas
+(Dirección pidió el nivel de la del tejido circular). El jet va en corte: la
+cuerda sin fin sube por el torniquete, la tobera la impulsa con el baño y cae
+plegada al fondo; cada lote se carga, se tiñe (el baño cede el color a la
+tela), se enjuaga y se descarga. La rama va en perspectiva: la tela entra
+húmeda y angosta, las cadenas la abren al ancho, cruza las cámaras y sale al
+rollo; la unión entre lotes marca la etapa. Las etapas se muestran en la lista
+`qb-fases` bajo el lienzo (texto del XML, con su inglés en el `.po`); el lienzo
+ya no lleva rótulos. Sin cifras ni parámetros de proceso.

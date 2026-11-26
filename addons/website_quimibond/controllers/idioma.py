@@ -42,8 +42,6 @@ TEXTOS_JS = [
     'Presentación', 'Requisitos', 'Norma', 'Volumen', 'Lo necesita para', 'Diseño de tela (diseñador en línea)',
     'Diseño de tela', 'Enlace copiado', 'Copie el enlace de su diseño:',
     'Cargando catálogo…', 'Sin resultados. Fabricamos sobre especificación: pida una cotización.', 'Productos',
-    'TORNIQUETE', 'TOBERA', 'TELA EN CUERDA', 'CALOR', 'BOMBA', 'BAÑO', 'CRUDO', 'COLOR PAREJO', 'ENTRADA',
-    'ENSANCHE', 'SECADO Y TERMOFIJADO', 'ROLLO', 'CADENA DE AGUJAS', 'ANCHO PEDIDO',
 ]
 
 

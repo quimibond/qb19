@@ -5209,3 +5209,43 @@ msgstr "stenter"
 #: code:addons/website_quimibond/controllers/contenido.py:0
 msgid "ramas"
 msgstr "stenters"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Carga"
+msgstr "Loading"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Teñido"
+msgstr "Dyeing"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Enjuague"
+msgstr "Rinsing"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Descarga"
+msgstr "Unloading"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Entrada"
+msgstr "Entry"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Ensanche"
+msgstr "Widening"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Termofijado"
+msgstr "Heat setting"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Enrollado"
+msgstr "Winding"
