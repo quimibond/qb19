@@ -24,6 +24,8 @@ Flujo:
 import logging
 from datetime import timedelta
 
+import pytz
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -35,6 +37,11 @@ PARAM_SEPARACION = 'qb_checador.horas_entre_turnos'  # un hueco así o mayor des
 DUP_MIN_DEFAULT = 2
 TURNO_MAX_DEFAULT = 16
 SEPARACION_DEFAULT = 8
+# Para reconocer una salida sin entrada: las asistencias completas de la persona en estos días, y
+# una hora «parecida» a otra si están a menos de estos minutos.
+HISTORIAL_DIAS = 60
+HORA_PARECIDA_MIN = 90
+HISTORIAL_MINIMO = 3
 
 ESTADOS = [
     ('nueva', "Nueva"),
@@ -310,6 +317,41 @@ class Checada(models.Model):
             return False    # una asistencia capturada a mano no se alarga sola
         return ts - asistencia.check_out < separacion
 
+    def _salida_sin_entrada(self, empleado, abierta, checada, separacion):
+        """¿La asistencia ``abierta`` (una sola checada) es en realidad una salida sin entrada?
+
+        Pasa cuando a alguien de día le falta la entrada: su salida de las 17:00 queda sola y la entrada
+        del día siguiente (06:35) cabe en las 16 horas que se esperan para un turno de noche sin checar a
+        la comida. Se decide con su propio historial: la abierta está a su hora de salida de siempre y a
+        ninguna hora de entrada, y la nueva está a su hora de entrada de siempre. Si la persona rota de
+        día a noche (sus entradas y salidas caen a las mismas horas) no se puede saber y se deja como
+        estaba."""
+        if checada.timestamp - abierta.check_in < separacion:
+            return False
+        historial = self.env['hr.attendance'].sudo().search([
+            ('employee_id', '=', empleado.id), ('in_mode', '=', 'checador'), ('out_mode', '=', 'checador'),
+            ('id', '!=', abierta.id), ('check_in', '<', abierta.check_in),
+            ('check_in', '>=', abierta.check_in - timedelta(days=HISTORIAL_DIAS)),
+        ])
+        historial = historial.filtered(lambda a: 4 <= a.worked_hours <= 16)
+        if len(historial) < HISTORIAL_MINIMO:
+            return False
+        tz = checada.equipo_id._tz() if checada.equipo_id else pytz.timezone('America/Mexico_City')
+
+        def minuto(ts):
+            local = pytz.utc.localize(ts).astimezone(tz)
+            return local.hour * 60 + local.minute
+
+        def cerca(ts, horas):
+            m = minuto(ts)
+            return sum(1 for h in horas if min(abs(m - h), 1440 - abs(m - h)) <= HORA_PARECIDA_MIN)
+
+        entradas = [minuto(a.check_in) for a in historial]
+        salidas = [minuto(a.check_out) for a in historial]
+        return (cerca(abierta.check_in, salidas) >= HISTORIAL_MINIMO
+                and cerca(abierta.check_in, entradas) == 0
+                and cerca(checada.timestamp, entradas) >= HISTORIAL_MINIMO)
+
     def _emparejar_empleado(self, empleado, checadas, dup, turno_max, separacion):
         Att = self.env['hr.attendance'].sudo()
         checadas = checadas.sorted(key=lambda c: (c.timestamp, c.id))
@@ -334,7 +376,18 @@ class Checada(models.Model):
             if Att.search_count([('employee_id', '=', empleado.id), ('check_in', '>', c.timestamp)]):
                 c.write({'state': 'huerfana', 'nota': "Llegó fuera de orden: hay una asistencia posterior"})
                 continue
-            if ultima and self._mismo_turno(ultima, c.timestamp, turno_max, separacion):
+            if ultima and not ultima.check_out and self._salida_sin_entrada(empleado, ultima, c, separacion):
+                # La checada abierta es una salida (faltó la entrada de ese día) y esta es la entrada del
+                # día siguiente: juntarlas haría una «asistencia» de la tarde a la mañana. La abierta se
+                # cierra en cero y se marca; esta empieza su propio turno.
+                ultima.write({'check_out': ultima.check_in + timedelta(minutes=1)})
+                ultima.write({'out_mode': 'technical'})
+                if ultima.qb_checada_in_id:
+                    ultima.qb_checada_in_id.write({
+                        'state': 'huerfana',
+                        'nota': "Salida sin entrada (a su hora de salida de siempre): la asistencia se cerró "
+                                "en cero; capturar la entrada a mano"})
+            elif ultima and self._mismo_turno(ultima, c.timestamp, turno_max, separacion):
                 ultima.write({'check_out': c.timestamp, 'out_mode': 'checador', 'qb_checada_out_id': c.id})
                 c.write({'state': 'emparejada', 'attendance_id': ultima.id})
                 hechas += 1
