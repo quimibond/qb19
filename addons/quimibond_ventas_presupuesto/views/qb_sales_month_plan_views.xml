@@ -74,6 +74,7 @@
                             <field name="amount_annual"/>
                             <field name="amount_annual_diff"
                                    decoration-danger="amount_annual_diff &lt; 0" decoration-success="amount_annual_diff &gt; 0"/>
+                            <field name="amount_no_annual" invisible="not amount_no_annual"/>
                             <field name="sent_date" invisible="state != 'enviado'"/>
                             <field name="sent_by_id" invisible="state != 'enviado'"/>
                         </group>
@@ -107,13 +108,15 @@
                             <p class="text-muted">
                                 Las cantidades del mes salen del pronóstico vigente; del presupuesto anual aprobado salen
                                 el precio y el tipo de cambio. Aquí se ve, por mercado, cuánto se aleja el mes de lo
-                                que el anual traía para este mes.
+                                que el anual traía para este mes. Un mercado que el anual no trae este mes no se
+                                compara: sale «El anual no trae este mes» y no entra a la diferencia.
                             </p>
                             <field name="compare_ids">
                                 <list decoration-danger="amount_diff &lt; 0" decoration-success="amount_diff &gt; 0">
                                     <field name="mercado"/>
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="amount_annual" sum="Total"/>
+                                    <field name="annual_note"/>
                                     <field name="amount_plan" sum="Total"/>
                                     <field name="amount_diff" sum="Total"/>
                                     <field name="diff_pct"/>

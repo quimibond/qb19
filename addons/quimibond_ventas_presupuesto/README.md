@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## El mes contra el anual solo donde el anual trae el mercado (19.0.3.36.0, 2026-11-25)
+
+Jose revisó noviembre 2026 en producción: el mes sumaba 16.0 M contra 2.7 M del anual. El que viene corto es
+el anual: la REV2 de 2026 (como la REV1) no trae renglones de Industrial ni de Proyectos en noviembre ni
+diciembre; solo Confección (1,978,863) y Especiales (710,500). El mes (todo Industrial y Proyectos, del
+pronóstico con el precio del anual) cuadra con lo facturado (15.5 M al 25-nov; 14.1 a 16.5 M de agosto a
+octubre). Con la misma regla que el cumplimiento (3.22.0), un mercado sin renglones en el anual del mes ya no
+se compara: en la pestaña «Contra el anual» y en el PDF sale «El anual no trae este mes», sin diferencia; la
+«Diferencia contra el anual» de la ficha y del correo cuenta solo los mercados que el anual trae, y «Del mes
+en mercados sin anual» dice cuánto queda fuera.
+
 ## El PDF del mes con el anual (19.0.3.35.1, 2026-11-24)
 
 Prueba de 3.35.0 en main: «Enviar a Dirección» del presupuesto de enero 2027, que sí tiene anual aprobado,
