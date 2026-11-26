@@ -627,6 +627,7 @@ a:hover .qb-muestra__puntos { opacity: .9; }
 .qb-tipo__dib--anim canvas { display: block; width: 100%; height: 100%; }
 .qb-dibujos + .qb-dibujos { margin-top: 48px; }
 .qb-dibujos__rejilla { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.qb-dibujos__rejilla--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 991.98px) { .qb-dibujos__rejilla { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767.98px) { .qb-dibujos__rejilla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .qb-dibujos .qb-tipo { padding: 8px; } .qb-dibujos .qb-tipo__cuerpo { padding: 12px 6px 6px; } .qb-dibujos .qb-tipo__cuerpo p { font-size: .82rem; } }
 .qb-tipo__cuerpo { padding: 16px 12px 10px; }

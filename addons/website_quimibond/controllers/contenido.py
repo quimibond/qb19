@@ -134,6 +134,52 @@ DIBUJOS = [
     },
 ]
 
+# Acabados, con los nombres del catálogo de acabados de la planta (claves de
+# codificación de artículos, parte «acabado»). La «clave» es la del script
+# (ACABADOS en static/src/js/quimibond.js), que anima el efecto de cada uno
+# sobre la tela. Sin parámetros de proceso ni químicos: eso es receta.
+ACABADOS = [
+    {
+        'clave': 'rama',
+        'nombre': 'En rama',
+        'texto': 'Se dan al pasar la tela por la rama, junto con el termofijado. Varios se pueden combinar '
+                 'en una misma tela.',
+        'acabados': [
+            {'clave': 'termofijado', 'nombre': 'Termofijado',
+             'texto': 'El calor fija el ancho y las medidas: la tela ya no encoge ni se deforma al cortarla.'},
+            {'clave': 'ignifugo', 'nombre': 'Ignífugo (antiflama)',
+             'texto': 'Retardante de flama: al retirar el fuego, la tela se apaga sola y la flama no avanza.'},
+            {'clave': 'repelente', 'nombre': 'Repelente',
+             'texto': 'El agua no moja la tela: forma gotas que resbalan por la superficie.'},
+            {'clave': 'antiestatico', 'nombre': 'Antiestático',
+             'texto': 'Disipa la carga que se acumula con el roce: la tela no se pega ni atrae pelusa.'},
+            {'clave': 'antibacterial', 'nombre': 'Antibacterial',
+             'texto': 'Frena el crecimiento de bacterias en la tela y, con ellas, el mal olor.'},
+            {'clave': 'secado', 'nombre': 'Secado rápido',
+             'texto': 'La tela absorbe la humedad, la reparte y seca pronto. Para ropa deportiva y de trabajo.'},
+            {'clave': 'tacto_suave', 'nombre': 'Tacto suave',
+             'texto': 'Suavizado: la tela cae con fluidez y se siente lisa en la mano.'},
+            {'clave': 'tacto_rigido', 'nombre': 'Tacto rígido',
+             'texto': 'Da cuerpo y firmeza: la tela mantiene su forma. También en semirrígido.'},
+            {'clave': 'resina', 'nombre': 'Resina acrílica',
+             'texto': 'La resina amarra las fibras donde se cruzan: más cuerpo, más resistencia y medidas estables.'},
+        ],
+    },
+    {
+        'clave': 'superficie',
+        'nombre': 'De superficie',
+        'texto': 'Cambian la cara de la tela: levantan la fibra o la dejan limpia.',
+        'acabados': [
+            {'clave': 'afelpado', 'nombre': 'Afelpado',
+             'texto': 'Se levanta la fibra de la superficie hasta formar una felpa que abriga.'},
+            {'clave': 'esmerilado', 'nombre': 'Esmerilado',
+             'texto': 'Un lijado fino deja una pelusa corta y pareja, con tacto de durazno.'},
+            {'clave': 'biopulido', 'nombre': 'Biopulido',
+             'texto': 'Retira la pelusa suelta: superficie más limpia, lisa y con menos bolitas.'},
+        ],
+    },
+]
+
 PRESENTACIONES = [
     'Tela tubular', 'Tela abierta', 'Teñida en jet', 'Termofijada en rama', 'Fusionable por espolvoreo',
     'Cortada y perforada',

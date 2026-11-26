@@ -414,6 +414,35 @@
                         </t>
                     </div>
                 </section>
+                <section class="qb-sec qb-sec--suave" id="acabados">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Acabados</span>
+                            <h2 class="qb-reveal">El acabado decide cómo se comporta la tela.</h2>
+                            <p class="qb-lead qb-reveal">Repeler el agua, no propagar la flama, no cargarse de estática: cada acabado se da según la especificación del cliente. Pase el cursor sobre uno para acelerarlo.</p>
+                        </div>
+                        <t t-foreach="qb_acabados" t-as="grupo">
+                            <section class="qb-dibujos">
+                                <header class="qb-familia__cab qb-reveal">
+                                    <h3 t-out="grupo['nombre']"/>
+                                    <p t-out="grupo['texto']"/>
+                                </header>
+                                <div class="qb-dibujos__rejilla qb-dibujos__rejilla--3">
+                                    <t t-foreach="grupo['acabados']" t-as="a">
+                                        <article class="qb-card qb-tipo qb-spot qb-reveal">
+                                            <div class="qb-tipo__dib qb-tipo__dib--anim"><canvas data-qb-anim="acabado" t-att-data-qb-acabado="a['clave']" role="img" t-att-aria-label="a['nombre']"/></div>
+                                            <div class="qb-tipo__cuerpo">
+                                                <span class="qb-mono" t-out="grupo['nombre']"/>
+                                                <h4 t-out="a['nombre']"/>
+                                                <p t-out="a['texto']"/>
+                                            </div>
+                                        </article>
+                                    </t>
+                                </div>
+                            </section>
+                        </t>
+                    </div>
+                </section>
                 <section class="qb-sec">
                     <div class="qb-container">
                         <div class="qb-sec__cab">
