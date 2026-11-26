@@ -308,6 +308,155 @@
     }
 
     /* ---------------------------------------------------------------------
+       Punto de una fontura: cómo se forma la malla.
+       La hilera de agujas, vista de frente. Cada alimentador recorre las
+       agujas; la aguja sube, toma el hilo y al bajar lo pasa por la malla
+       anterior. Cada alimentador deja una pasada y la tela baja.
+       ------------------------------------------------------------------ */
+    function puntoUnaFontura(canvas) {
+        var GRIS = "#a1a1aa";
+        var avance = 40;               // en pasos de alimentador
+        var vel = 0.24;
+        var objetivo = 0.24;
+        var caja = canvas.closest(".qb-tipo") || canvas.parentElement;
+        caja.addEventListener("pointerenter", function () { objetivo = 0.6; });
+        caja.addEventListener("pointerleave", function () { objetivo = 0.24; });
+
+        function colorDe(k) {
+            var m = ((k % 9) + 9) % 9;
+            return m % 3 === 0 ? HILOS[m / 3] : GRIS;
+        }
+        function suaviza(x) {
+            x = x < 0 ? 0 : x > 1 ? 1 : x;
+            return x * x * (3 - 2 * x);
+        }
+
+        lienzo(canvas, function (ctx, w, h, t, dt) {
+            vel += (objetivo - vel) * Math.min(1, dt * 2.5);
+            avance += vel * dt;
+            var N = Math.max(9, Math.round(w / 34));      // agujas a la vista
+            var s = w / N;                                 // paso entre agujas
+            var ch = s * 0.66;                             // alto de una pasada
+            var lh = ch * 1.8;                             // alto de la malla (se enlaza con la de arriba)
+            var y0 = Math.max(h * 0.36, s * 2.9);          // línea donde se forma la malla
+            var H = s * 1.5;                               // carrera de la aguja
+            var yF = y0 - ch * 0.95;                       // altura a la que entra el hilo
+            var L = Math.max(w * 0.62, s * 9);             // distancia entre alimentadores
+            var X = avance * L;
+            var grosor = Math.max(1.3, s * 0.055);
+            var i, k;
+            ctx.clearRect(0, 0, w, h);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            // Estado de cada aguja: K pasadas tejidas, f avance hacia la siguiente
+            var col = [];
+            for (i = -1; i <= N; i++) {
+                var x = (i + 0.5) * s;
+                var p = (X - x) / L;
+                var K = Math.floor(p);
+                var f = p - K;
+                var e = suaviza(f / 0.3);                  // 0 hilo recién puesto → 1 malla formada
+                var punta;
+                if (f < 0.3) {
+                    punta = yF + (y0 - yF) * e;
+                } else if (f < 0.82) {
+                    punta = y0 - H * suaviza((f - 0.5) / 0.32);
+                } else {
+                    punta = y0 - H + (yF - (y0 - H)) * suaviza((f - 0.82) / 0.18);
+                }
+                col.push({ x: x, K: K, e: e, punta: punta });
+            }
+            var Kmax = col[0].K;
+            var visibles = Math.ceil((h - y0) / ch) + 1;
+
+            function malla(c, k) {
+                // [cabeza, pie] de la malla de la pasada k en la aguja c
+                if (c.K === k) {
+                    return [yF + (y0 - yF) * c.e, yF + (y0 + lh - yF) * c.e];
+                }
+                var cab = y0 + (c.K - k - 1 + c.e) * ch;
+                return [cab, cab + lh];
+            }
+
+            // Agujas (detrás de la tela): vástago y gancho
+            for (i = 0; i < col.length; i++) {
+                var a = col[i];
+                var arriba = (y0 - a.punta) / H;
+                ctx.strokeStyle = arriba > 0.5 ? "#18181b" : "#a1a1aa";
+                ctx.lineWidth = arriba > 0.5 ? 1.5 : 1.1;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.punta + H * 1.15);
+                ctx.lineTo(a.x, a.punta - s * 0.1);
+                ctx.arc(a.x + s * 0.1, a.punta - s * 0.1, s * 0.1, Math.PI, Math.PI * 2.2);
+                ctx.stroke();
+            }
+
+            // Tela: una línea de hilo por pasada, de la más vieja a la más nueva
+            for (k = Kmax - visibles; k <= Kmax + 1; k++) {
+                var color = colorDe(k);
+                var fondo = Math.max(0, (Kmax - k - 1) / visibles);
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = Math.max(0, 1 - Math.pow(fondo, 1.7) * 1.05) * (color === GRIS ? 0.8 : 1);
+                ctx.lineWidth = grosor;
+                ctx.beginPath();
+                var ultimo = null;
+                var previo = null;
+                for (i = 0; i < col.length; i++) {
+                    var c = col[i];
+                    if (c.K < k) { break; }
+                    var m = malla(c, k);
+                    var cab = m[0];
+                    var pie = m[1];
+                    var alto = pie - cab;
+                    var rv = Math.min(s * 0.3, alto * 0.3);
+                    var xl = c.x - s / 2;
+                    var yl = previo === null ? pie : (previo + pie) / 2;
+                    var sig = col[i + 1];
+                    var yr = sig && sig.K >= k ? (pie + malla(sig, k)[1]) / 2 : pie;
+                    var q = Math.min(1, alto / (lh * 0.6));     // 0 hilo tendido → 1 malla abierta
+                    var xb = s * (0.25 - 0.05 * q);
+                    var xt = s * (0.25 + 0.05 * q);
+                    if (previo === null) { ctx.moveTo(xl, yl); }
+                    ctx.bezierCurveTo(xl + s * 0.2, yl, c.x - xb + s * 0.03 * q, pie - rv * 0.25, c.x - xb, pie - rv);
+                    ctx.lineTo(c.x - xt, cab + rv);
+                    ctx.bezierCurveTo(c.x - xt - s * 0.04 * q, cab - rv * 0.33, c.x + xt + s * 0.04 * q, cab - rv * 0.33, c.x + xt, cab + rv);
+                    ctx.lineTo(c.x + xb, pie - rv);
+                    ctx.bezierCurveTo(c.x + xb - s * 0.03 * q, pie - rv * 0.25, xl + s * 0.8, yr, xl + s, yr);
+                    previo = pie;
+                    ultimo = xl + s;
+                }
+                // Del último punto tejido al alimentador y de ahí a la bobina
+                var xf = X - k * L;
+                if (xf > -s && xf < w + s * 2) {
+                    if (ultimo === null) { ctx.moveTo(-s, yF); }
+                    ctx.lineTo(xf, yF);
+                    ctx.stroke();
+                    ctx.setLineDash([5, 3]);
+                    ctx.lineDashOffset = t * 40 * (vel / 0.24);
+                    ctx.lineWidth = 1.3;
+                    ctx.beginPath();
+                    ctx.moveTo(xf, yF);
+                    ctx.quadraticCurveTo(xf + s * 0.5, yF * 0.45, xf + s * 2.2, -4);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = "#fff";
+                    ctx.strokeStyle = "#18181b";
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.arc(xf, yF, Math.max(3, s * 0.13), 0, TAU);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ---------------------------------------------------------------------
        No tejido: fibras al azar y puntos de adhesivo que se encienden en ola.
        ------------------------------------------------------------------ */
     function fibras(canvas) {
@@ -1920,6 +2069,7 @@
         }
         todos('canvas[data-qb-anim="circular"]').forEach(maquinaCircular);
         todos('canvas[data-qb-anim="fibras"]').forEach(fibras);
+        todos('canvas[data-qb-anim="una_fontura"]').forEach(puntoUnaFontura);
         todos('canvas[data-qb-anim="jet"]').forEach(jet);
         todos('canvas[data-qb-anim="rama"]').forEach(rama);
         todos('canvas[data-qb-anim="tela"]').forEach(tela);
