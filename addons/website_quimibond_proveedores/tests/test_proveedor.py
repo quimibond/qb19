@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, timedelta
 
-from odoo import Command, http
+from odoo import Command, fields, http
 from odoo.tests import HttpCase, tagged
 
 from ..controllers.proveedor import estado_pago, fecha_programada
@@ -187,13 +187,17 @@ class TestPortalProveedor(HttpCase):
         self.assertEqual(move.amount_untaxed, 500.0)
         self.assertEqual(len(self.env['ir.attachment'].search([('res_model', '=', 'account.move'), ('res_id', '=', move.id)])), 2)
 
-        hoy = date(2026, 11, 20)
+        # Relativo a hoy: la página de pagos usa la fecha real (con fechas fijas
+        # la prueba se venció el 26-nov-2026).
+        hoy = fields.Date.today()
+        vence = hoy + timedelta(days=5)
         self.assertEqual(estado_pago(move, hoy)[0], 'revision')
-        move.invoice_date_due = date(2026, 11, 25)
+        move.invoice_date_due = vence
         move.action_post()
-        self.assertEqual(estado_pago(move, hoy)[::2], ('programada', date(2026, 11, 25)))
-        self.assertEqual(estado_pago(move, hoy, '4')[::2], ('programada', date(2026, 11, 27)))
-        self.assertEqual(estado_pago(move, date(2026, 12, 1))[0], 'proceso')
+        self.assertEqual(estado_pago(move, hoy)[::2], ('programada', vence))
+        viernes = vence + timedelta(days=(4 - vence.weekday()) % 7)
+        self.assertEqual(estado_pago(move, hoy, '4')[::2], ('programada', viernes))
+        self.assertEqual(estado_pago(move, vence + timedelta(days=1))[0], 'proceso')
 
         self.authenticate('ventas@alfa.test', 'ventas@alfa.test')
         pagos = self.url_open('/mi-cuenta/proveedor/pagos')
