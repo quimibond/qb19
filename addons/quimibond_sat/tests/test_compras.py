@@ -8,6 +8,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import Command, fields
+from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from .common import SatCommon, syntage_invoice
@@ -321,3 +322,30 @@ class TestSatCompras(SatCommon):
         self.assertEqual((line.price_unit, line.discount), (0.59, 3.0))
         self.assertAlmostEqual(move.amount_total, 57.23, places=2)
         self.assertEqual(move.sat_semaforo, 'verde', move.sat_semaforo_motivo)
+
+    def test_bill_gets_the_pdf(self):
+        # Aurelio (26-nov): cada factura desde el SAT trae también el PDF.
+        self._purchase(10)
+        cfdi = self._po_cfdi(10)
+        Cfdi = type(self.env['sat.cfdi'])
+        with self._patch_xml(), patch.object(Cfdi, '_fetch_pdf', lambda rec: b'%PDF-1.4 prueba'):
+            move = self.env['account.move'].browse(cfdi.action_create_bill()['res_id'])
+            name = '%s.pdf' % cfdi.uuid.upper()
+            pdfs = self.env['ir.attachment'].search([('res_model', '=', 'account.move'), ('res_id', '=', move.id),
+                                                     ('name', '=', name)])
+            self.assertEqual(len(pdfs), 1)
+            self.assertEqual(pdfs.mimetype, 'application/pdf')
+            move.action_sat_attach_pdf()          # no lo repite
+            self.assertEqual(self.env['ir.attachment'].search_count([
+                ('res_model', '=', 'account.move'), ('res_id', '=', move.id), ('name', '=', name)]), 1)
+
+    def test_bill_without_pdf_still_created(self):
+        self._purchase(10)
+        cfdi = self._po_cfdi(10)
+        Cfdi = type(self.env['sat.cfdi'])
+
+        def boom(rec):
+            raise UserError('Syntage respondió 404')
+        with self._patch_xml(), patch.object(Cfdi, '_fetch_pdf', boom):
+            move = self.env['account.move'].browse(cfdi.action_create_bill()['res_id'])
+        self.assertTrue(move.invoice_line_ids)

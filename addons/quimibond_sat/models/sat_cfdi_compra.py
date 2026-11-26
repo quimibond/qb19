@@ -351,6 +351,7 @@ class SatCfdiCompra(models.Model):
             self._apply_bill_rules(move)
         move.write({'sat_auto_bill': True, 'sat_origen': how[:250]})
         move.invoice_line_ids._sat_remember_account()
+        self._attach_pdf_to_move(move)
         move._sat_semaforo_update()
         return move
 
