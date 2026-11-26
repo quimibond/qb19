@@ -305,3 +305,19 @@ class TestSatCompras(SatCommon):
         self._bill(self._cfdi())
         other = self._cfdi(UUID_B, id='b')
         self.assertFalse(other._auto_bill_blocker())
+
+    def test_discount_goes_in_its_column(self):
+        # Euroeléctrica (26-nov): la orden trae el neto redondeado (0.57) y el
+        # CFDI 0.59 con 3 % de descuento (neto 0.5723). Sin la columna de
+        # descuento la factura daba 57.00 contra 57.23 del CFDI.
+        order = self._purchase(100, price=0.57)
+        cfdi = self._cfdi(subtotal=59.0, discount=1.77, total=57.23, transferredTaxes={'total': 0},
+                          items=[dict(item(100, 0.59, 'COLLARIN'), discountAmount=1.77)])
+        with self._patch_xml():
+            action = cfdi.action_create_bill()
+        move = self.env['account.move'].browse(action['res_id'])
+        line = move.invoice_line_ids
+        self.assertEqual(line.purchase_line_id, order.order_line)
+        self.assertEqual((line.price_unit, line.discount), (0.59, 3.0))
+        self.assertAlmostEqual(move.amount_total, 57.23, places=2)
+        self.assertEqual(move.sat_semaforo, 'verde', move.sat_semaforo_motivo)
