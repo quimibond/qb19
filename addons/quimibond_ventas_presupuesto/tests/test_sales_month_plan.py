@@ -227,3 +227,23 @@ class TestSalesMonthPlan(TransactionCase):
         action = plan.action_qb_send()
         self.assertIn("mercados por %s del mes" % '{:,.0f}'.format(conf_line.amount),
                       str(action['context']['default_body']))
+
+    def test_10_mes_por_fecha_de_entrega(self):
+        """3.37.0: una entrega de los primeros días del mes cuya semana empieza el mes anterior es del mes de
+        su fecha de entrega (ContiTech: 2-dic en la semana del lunes 30-nov). Sin fecha, cuenta el lunes."""
+        Forecast = self.env['qb.forecast.line']
+        product = self.env['product.product'].create({
+            'name': 'Tela entrega', 'default_code': 'WENT160', 'type': 'consu', 'uom_id': self.uom_m.id})
+        con_fecha = Forecast.create({'partner_id': self.client.id, 'product_id': product.id,
+                                     'week': date(2071, 4, 27), 'delivery_date': date(2071, 5, 1),
+                                     'qty_origen': 40.0, 'mercado': 'industrial'})
+        sin_fecha = Forecast.create({'partner_id': self.client.id, 'product_id': product.id,
+                                     'week': date(2071, 4, 27), 'qty_origen': 7.0, 'mercado': 'industrial'})
+        self.assertEqual(con_fecha.month, date(2071, 5, 1))
+        self.assertEqual(sin_fecha.month, date(2071, 4, 1))
+        plan = self._build()
+        line = plan.line_ids.filtered(lambda l: l.product_id == product)
+        self.assertAlmostEqual(line.qty_forecast, 40.0, places=2,
+                               msg="Entra la entrega del 1-may; la de la semana del 27-abr sin fecha no")
+        con_fecha.delivery_date = date(2071, 4, 30)
+        self.assertEqual(con_fecha.month, date(2071, 4, 1), "Cambiar la fecha de entrega cambia el mes")

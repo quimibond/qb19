@@ -1527,10 +1527,10 @@ class SgiSalesBudget(models.Model):
         # 3.0.0: el pronóstico vigente (qb.forecast.line), ya en la unidad de venta.
         forecast_lines = self.env['qb.forecast.line'].search([
             ('company_id', '=', self.company_id.id), ('qty_venta', '>', 0),
-            ('week', '>=', date(self.year, 1, 1)), ('week', '<=', date(self.year, 12, 31))])
+            ('month', '>=', date(self.year, 1, 1)), ('month', '<=', date(self.year, 12, 31))])
         for line in forecast_lines:
             partner = line.partner_id.commercial_partner_id
-            key = (line.product_id, partner, line.week.month)
+            key = (line.product_id, partner, line.month.month)
             forecast_qty[key] += line.qty_venta
 
         real_qty = defaultdict(float)

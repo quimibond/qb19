@@ -146,7 +146,7 @@ class QbSalesBudgetProposal(models.TransientModel):
         start, end = date(self.year, 1, 1), date(self.year, 12, 31)
         lines = Forecast.search([
             ('company_id', '=', budget.company_id.id), ('qty_venta', '>', 0),
-            ('partner_id', '!=', False), ('week', '>=', start), ('week', '<=', end)])
+            ('partner_id', '!=', False), ('month', '>=', start), ('month', '<=', end)])
         partners = lines.mapped('partner_id.commercial_partner_id')
         covered = {}
         for partner in partners:
@@ -160,13 +160,13 @@ class QbSalesBudgetProposal(models.TransientModel):
                 if date(self.year, m, 1) + relativedelta(months=1, days=-1) <= reach:
                     month = m
             first = min(lines.filtered(
-                lambda l, p=partner: l.partner_id.commercial_partner_id == p).mapped('week')).month
+                lambda l, p=partner: l.partner_id.commercial_partner_id == p).mapped('month')).month
             if month >= first:
                 covered[partner] = (first, month)
         rows = {}
         for line in lines:
             partner = line.partner_id.commercial_partner_id
-            month = line.week.month
+            month = line.month.month
             first, last = covered.get(partner, (13, 0))
             if not first <= month <= last:
                 continue

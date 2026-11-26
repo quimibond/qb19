@@ -133,7 +133,9 @@ class QbForecastLine(models.Model):
     customer_part = fields.Char(string="Parte del cliente")
     week = fields.Date(string="Semana", required=True, index=True,
                        help="Lunes de la semana de embarque.")
-    month = fields.Date(string="Mes", compute='_compute_month', store=True, index=True)
+    month = fields.Date(string="Mes", compute='_compute_month', store=True, index=True,
+                        help="Mes de la fecha de entrega del cliente; sin ella, el del lunes de la semana. "
+                             "Con este mes se arman el presupuesto del mes y el anual.")
     # 3.2.0: columna de la matriz semanal (catálogo de lunes; la fecha no da columnas por semana en el grid).
     week_id = fields.Many2one('qb.forecast.week', string="Semana (matriz)", index=True, readonly=True,
                               group_expand='_read_group_week_id')
@@ -216,10 +218,13 @@ class QbForecastLine(models.Model):
         for line in self:
             line.qty_diferencia = line.qty_venta - line.qty_release if line.release_id else 0.0
 
-    @api.depends('week')
+    @api.depends('week', 'delivery_date')
     def _compute_month(self):
+        # 3.37.0: el mes sale de la fecha de entrega (una entrega del 2-dic en la semana del lunes 30-nov es de
+        # diciembre); el lunes de la semana solo cuando la línea no trae fecha de entrega.
         for line in self:
-            line.month = line.week.replace(day=1) if line.week else False
+            day = line.delivery_date or line.week
+            line.month = day.replace(day=1) if day else False
 
     @api.depends('partner_id')
     def _compute_mercado(self):
