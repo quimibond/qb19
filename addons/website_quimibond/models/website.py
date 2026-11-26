@@ -28,15 +28,15 @@ class Website(models.Model):
              'una oportunidad en CRM con el día y el horario que la persona prefiere.',
     )
     qb_llamadas_user_id = fields.Many2one(
-        'res.users', string='Atiende las llamadas',
+        'res.users', string='Atiende las solicitudes del sitio',
         domain="[('share', '=', False)]",
-        help='Vendedor al que se asignan las solicitudes de llamada del sitio '
-             '(automotriz, blancos y no tejidos). Vacío, las reparte el equipo de ventas.',
+        help='Vendedor al que se asignan las cotizaciones, llamadas y demás solicitudes del sitio '
+             '(automotriz, blancos y no tejidos). Vacío, quedan sin vendedor en el equipo de ventas.',
     )
     qb_llamadas_confeccion_user_id = fields.Many2one(
-        'res.users', string='Atiende las llamadas de confección',
+        'res.users', string='Atiende las solicitudes de confección',
         domain="[('share', '=', False)]",
-        help='Vendedor al que se asignan las solicitudes de llamada del mercado de '
+        help='Vendedor al que se asignan las solicitudes del sitio del mercado de '
              'confección. Vacío, van con quien atiende las demás.',
     )
     qb_certificado_ids = fields.Many2many(
