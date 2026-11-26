@@ -9,6 +9,7 @@
             <list decoration-muted="state == 'pasada'">
                 <field name="name"/>
                 <field name="fecha_inicio"/>
+                <field name="corte" optional="show"/>
                 <field name="n_lineas"/>
                 <field name="n_faltas"/>
                 <field name="n_sin_checadas"/>
@@ -46,6 +47,9 @@
                         <group string="Semana">
                             <field name="fecha_inicio" readonly="state != 'borrador'"/>
                             <field name="fecha_fin"/>
+                            <field name="corte" readonly="state != 'borrador'"/>
+                            <field name="corte_aplicado" invisible="not corte_aplicado"/>
+                            <field name="pendientes_desde" invisible="not pendientes_desde"/>
                             <field name="payslip_run_id" readonly="state == 'pasada'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'borrador'"/>
                         </group>
@@ -58,6 +62,12 @@
                     </group>
                     <div class="alert alert-info mb-3" role="status" invisible="linea_ids">
                         Elija el lunes de la semana y use «Generar desde el checador».
+                    </div>
+                    <div class="alert alert-secondary mb-3" role="status" invisible="not pendientes_desde">
+                        Esta lista paga la semana hasta el corte y, además, lo de la semana anterior desde
+                        <field name="pendientes_desde" readonly="1" class="d-inline"/> hasta el domingo (columnas
+                        «sem. anterior», ya sumadas). Los días después del corte salen proyectados y se pagan
+                        en la lista de la semana siguiente.
                     </div>
                     <field name="linea_ids" readonly="state == 'pasada'">
                         <list editable="bottom" create="false" delete="false"
@@ -96,6 +106,10 @@
                             <field name="comida_min" readonly="1" optional="hide"/>
                             <field name="comidas_largas" readonly="1" sum="Comidas largas" optional="show"/>
                             <field name="festivos_trabajados" readonly="1" sum="Festivos trabajados" optional="show"/>
+                            <field name="ant_faltas" readonly="1" sum="Faltas sem. anterior" optional="hide"/>
+                            <field name="ant_he" readonly="1" sum="HE sem. anterior" optional="show"/>
+                            <field name="ant_dom" readonly="1" sum="Prima dominical sem. anterior" optional="hide"/>
+                            <field name="ant_festivos" readonly="1" optional="hide"/>
                             <field name="sin_checadas" readonly="1" optional="hide"/>
                             <field name="proyectado" readonly="1" optional="hide"/>
                             <field name="observaciones" optional="show"/>
