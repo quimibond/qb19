@@ -40,7 +40,9 @@ class TestReporteNomina(TransactionCase):
                 'company_id': slip.company_id.id, 'incluir_borrador': True})
             datos = wiz._qb_datos()
             self.assertTrue(datos['recibos'])
-            accion = wiz.action_generar()
+            # Sin diseño de documento en la compañía (base de build), Odoo abre
+            # primero el configurador del encabezado; aquí se prueba el reporte.
+            accion = wiz.with_context(discard_logo_check=True).action_generar()
             self.assertEqual(accion['type'], 'ir.actions.report')
             html, _tipo = self.env['ir.actions.report']._render_qweb_html(accion['report_name'], wiz.ids)
             self.assertIn(b'Percepci', html)
