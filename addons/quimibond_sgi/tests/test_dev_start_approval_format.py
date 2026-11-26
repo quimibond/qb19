@@ -31,7 +31,7 @@ class TestDevStartApprovalFormat(TransactionCase):
             'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_contact_id': self.contact.id,
             'sgi_dev_product_name': 'Interlock 140', 'sgi_dev_use': 'Tejido interlock de 140 g/m2',
             'sgi_dev_market_id': self.market.id, 'sgi_dev_legal_ids': [(6, 0, self.legal.ids)],
-            'sgi_dev_consumption_monthly': 150000, 'sgi_dev_consumption_uom': 'm', 'sgi_dev_sample_m': 5,
+            'sgi_dev_consumption_annual': 1800000, 'sgi_dev_consumption_uom': 'm', 'sgi_dev_sample_m': 5,
             'sgi_dev_requester': 'Vianey de Dios'}, **vals))
 
     def _line(self, dev, code, **vals):

@@ -14,6 +14,18 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.6 — 2026-11-26
+
+Fallas del build de dev (`qq9qm4`, 26-nov).
+
+### Corregido
+
+- **Arranque del desarrollo**: cancelar o rechazar la requisición de materia prima detiene el reloj aunque la solicitud no tenga aprobadores. `request_status` se calcula con los aprobadores y no pasaba a «Cancelada», así que el reloj seguía corriendo.
+
+### Pruebas
+
+- `test_dev_start_approval_format`: el consumo mensual se calcula desde el anual (12 × 150,000 m); la prueba capturaba el mensual, que se pisaba con 0.
+
 ## 19.0.57.202.5 — 2026-11-24
 
 Segunda tanda de las fallas viejas del suite del SGI en Odoo.sh (corrida completa del 24-nov: 38 fallas y 63 errores anteriores a 57.202.3).

@@ -336,7 +336,7 @@ class ApprovalRequestDevStart(models.Model):
         """Ya no detiene el desarrollo: rechazada / cancelada, o aprobada con
         todas sus órdenes de compra recibidas."""
         self.ensure_one()
-        if self.request_status in ('refused', 'cancel'):
+        if self.request_status in ('refused', 'cancel') or self.id in self.env.context.get('sgi_dev_closed_ids', ()):
             return True
         if self.request_status != 'approved':
             return False
@@ -361,12 +361,14 @@ class ApprovalRequestDevStart(models.Model):
 
     def action_refuse(self, approver=None):
         res = super().action_refuse(approver=approver)
-        self._sgi_dev_after_decision()
+        self.with_context(sgi_dev_closed_ids=self.ids)._sgi_dev_after_decision()
         return res
 
     def action_cancel(self):
+        # 57.202.6: una solicitud sin aprobadores (o que no se envió) no pasa a «Cancelada» en request_status
+        # (se calcula con los aprobadores), pero cancelarla ya decide que no detiene el desarrollo.
         res = super().action_cancel()
-        self._sgi_dev_after_decision()
+        self.with_context(sgi_dev_closed_ids=self.ids)._sgi_dev_after_decision()
         return res
 
 
