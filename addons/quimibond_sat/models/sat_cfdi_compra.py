@@ -186,16 +186,45 @@ class SatCfdiCompra(models.Model):
         """Líneas de factura (Command.create) desde las líneas de orden de `match`."""
         self.ensure_one()
         quantities = match['quantities']
+        items = [i for i in cfdi_items(self) if i['qty']]
+        free = list(range(len(items)))
         commands = []
         sequence = 10
         for line in match['lines'].sorted(lambda l: (l.order_id.id, l.sequence, l.id)):
             line_vals = line.with_company(self.company_id)._prepare_account_move_line()
             if line.id in quantities:
                 line_vals['quantity'] = quantities[line.id]
+            if line.currency_id.name == (self.moneda or 'MXN').upper():
+                self._apply_cfdi_discount(line_vals, items, free)
             line_vals['sequence'] = sequence
             sequence += 1
             commands.append(Command.create(line_vals))
         return commands
+
+    def _apply_cfdi_discount(self, line_vals, items, free):
+        """Descuento del concepto en su columna. La orden suele traer el precio
+        neto redondeado a centavos (0.57 por 0.5723) y la factura perdía esos
+        centavos contra el CFDI: con el precio de lista del CFDI y el % de
+        descuento, el subtotal de la línea es el del CFDI. Solo si el % cabe en
+        los decimales de «Descuento» y da el neto del concepto."""
+        qty = line_vals.get('quantity') or 0.0
+        price = line_vals.get('price_unit') or 0.0
+        digits = self.env['decimal.precision'].precision_get('Discount')
+        for idx in free:
+            item = items[idx]
+            if abs(item['qty'] - qty) > 0.001:
+                continue
+            gross = item['qty'] * item['price']
+            net = (item['amount'] or gross) - item['discount']
+            if not same_price(price, item['price']) and not same_price(price, net / item['qty']):
+                continue
+            free.remove(idx)
+            if item['discount'] <= 0.0 or gross <= 0.0:
+                return
+            pct = round(item['discount'] / gross * 100.0, digits)
+            if abs(gross * (1 - pct / 100.0) - net) <= 0.005:
+                line_vals.update({'price_unit': item['price'], 'discount': pct})
+            return
 
     def _write_sat_claves(self, move):
         """Clave del SAT de cada línea (para el semáforo y para aprender)."""

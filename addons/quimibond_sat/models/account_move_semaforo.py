@@ -100,7 +100,8 @@ class AccountMoveSemaforo(models.Model):
             if po_line:
                 price = po_line.currency_id._convert(po_line.price_unit, self.currency_id, self.company_id,
                                                      self.invoice_date or fields.Date.today(), round=False)
-                if abs(line.price_unit - price) > max(0.01, 0.01 * abs(price)):
+                net = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
+                if abs(net - price) > max(0.01, 0.01 * abs(price)):
                     amarillo.append(_('%(line)s: el precio (%(bill)s) no es el de la orden %(po)s (%(order)s).') % {
                         'line': label, 'bill': line.price_unit, 'po': po_line.order_id.name, 'order': price})
                 if po_line.qty_to_invoice < -0.001:
