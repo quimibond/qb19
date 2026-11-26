@@ -308,23 +308,62 @@
     }
 
     /* ---------------------------------------------------------------------
-       Punto de una fontura: cómo se forma la malla.
+       Dibujos de tejido de punto: cómo se forma cada uno.
        La hilera de agujas, vista de frente. Cada alimentador recorre las
-       agujas; la aguja sube, toma el hilo y al bajar lo pasa por la malla
-       anterior. Cada alimentador deja una pasada y la tela baja.
+       agujas y deja una pasada; la tela baja. En cada aguja el hilo hace
+       malla (K), carga (T: la aguja toma el hilo sin soltar la malla) o
+       anulado (M: la aguja no sube y el hilo pasa de largo). «X» es una
+       aguja retirada (desagujado). En doble fontura, «camas» dice de qué
+       fontura es cada aguja (F cilindro, B plato).
+       Los nombres son los del catálogo de dibujos de la planta.
        ------------------------------------------------------------------ */
-    function puntoUnaFontura(canvas) {
-        var GRIS = "#a1a1aa";
-        var avance = 40;               // en pasos de alimentador
-        var vel = 0.24;
-        var objetivo = 0.24;
-        var caja = canvas.closest(".qb-tipo") || canvas.parentElement;
-        caja.addEventListener("pointerenter", function () { objetivo = 0.6; });
-        caja.addEventListener("pointerleave", function () { objetivo = 0.24; });
+    var DIBUJOS = {
+        jersey: { filas: ["K"] },
+        listado: { filas: ["K"], color: function (k) { return [1, 1, 0, 0, 2, 2, 0, 0][((k % 8) + 8) % 8]; } },
+        vanizado: { filas: ["K"], c: [0], vanizado: 1 },
+        pique_cargas: { filas: ["KT", "KK", "TK", "KK"], c: [1, 0, 2, 0] },
+        pique_anulado: { filas: ["KM", "KK", "MK", "KK"], c: [1, 0, 2, 0] },
+        crepe_cargas: { filas: ["KKTK", "KKKK", "TKKK", "KKKT", "KKKK", "KTKK"], c: [1, 0, 2, 3, 0, 1] },
+        crepe_anulado: { filas: ["KKMK", "KKKK", "MKKK", "KKKM", "KKKK", "KMKK"], c: [1, 0, 2, 3, 0, 1] },
+        french_terry: { filas: ["KKKK", "TMMM", "KKKK", "MMTM"], c: [0, 1, 0, 1] },
+        flece: { filas: ["KKKK", "TMMM", "KKKK", "KKKK", "MMTM", "KKKK"], c: [0, 2, 0, 0, 2, 0] },
+        desagujado: { filas: ["KKKX"] },
+        jacquard: { filas: ["KKMM", "MMKK", "KKMM", "MMKK", "MMKK", "KKMM", "MMKK", "KKMM"], c: [1, 2, 1, 2, 1, 2, 1, 2] },
+        rib: { filas: ["KK"], camas: "FB" },
+        interlock: { filas: ["KKMM", "MMKK"], camas: "FBFB", c: [1, 0] },
+        punto_roma: { filas: ["KKMM", "MMKK", "KMKM", "MKMK"], camas: "FBFB", c: [0, 0, 1, 2] },
+        cardigan: { filas: ["KT", "TK"], camas: "FB", c: [1, 0] },
+    };
 
+    function dibujoTejido(canvas) {
+        var def = DIBUJOS[canvas.getAttribute("data-qb-dibujo")] || DIBUJOS.jersey;
+        var filas = def.filas;
+        var R = filas.length;
+        var C = filas[0].length;
+        var FONDO = "#f7f7f5";
+        var PALETA = ["#a1a1aa", HILOS[0], HILOS[1], HILOS[2]];
+        var avance = 40;               // en pasos de alimentador
+        var vel = 0.3;
+        var objetivo = 0.3;
+        var caja = canvas.closest(".qb-tipo") || canvas.parentElement;
+        caja.addEventListener("pointerenter", function () { objetivo = 0.75; });
+        caja.addEventListener("pointerleave", function () { objetivo = 0.3; });
+
+        function mod(a, n) { return ((a % n) + n) % n; }
+        function accion(k, i) { return filas[mod(k, R)].charAt(mod(i, C)); }
+        function cama(i) { return def.camas ? def.camas.charAt(mod(i, def.camas.length)) : "F"; }
         function colorDe(k) {
-            var m = ((k % 9) + 9) % 9;
-            return m % 3 === 0 ? HILOS[m / 3] : GRIS;
+            if (def.color) { return PALETA[def.color(k)]; }
+            if (def.c) { return PALETA[def.c[mod(k, R)]]; }
+            var m = mod(k, 9);
+            return m % 3 === 0 ? PALETA[1 + m / 3] : PALETA[0];
+        }
+        function sigMalla(k, i) {
+            // Pasada en la que esa aguja vuelve a hacer malla (suelta lo que trae)
+            for (var j = 1; j <= R; j++) {
+                if (accion(k + j, i) === "K") { return k + j; }
+            }
+            return Infinity;
         }
         function suaviza(x) {
             x = x < 0 ? 0 : x > 1 ? 1 : x;
@@ -334,125 +373,160 @@
         lienzo(canvas, function (ctx, w, h, t, dt) {
             vel += (objetivo - vel) * Math.min(1, dt * 2.5);
             avance += vel * dt;
-            var N = Math.max(9, Math.round(w / 34));      // agujas a la vista
+            var N = Math.max(12, Math.round(w / 30));     // agujas a la vista
+            N = Math.ceil(N / C) * C;
             var s = w / N;                                 // paso entre agujas
             var ch = s * 0.66;                             // alto de una pasada
             var lh = ch * 1.8;                             // alto de la malla (se enlaza con la de arriba)
-            var y0 = Math.max(h * 0.36, s * 2.9);          // línea donde se forma la malla
             var H = s * 1.5;                               // carrera de la aguja
+            var y0 = Math.min(h * 0.4, s * 2.7);           // línea donde se forma la malla
             var yF = y0 - ch * 0.95;                       // altura a la que entra el hilo
             var L = Math.max(w * 0.62, s * 9);             // distancia entre alimentadores
             var X = avance * L;
-            var grosor = Math.max(1.3, s * 0.055);
+            var grosor = Math.max(1.2, s * 0.058);
             var i, k;
             ctx.clearRect(0, 0, w, h);
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
 
-            // Estado de cada aguja: K pasadas tejidas, f avance hacia la siguiente
+            // Estado de cada aguja: K pasadas hechas, f avance hacia la siguiente
             var col = [];
             for (i = -1; i <= N; i++) {
                 var x = (i + 0.5) * s;
                 var p = (X - x) / L;
                 var K = Math.floor(p);
                 var f = p - K;
-                var e = suaviza(f / 0.3);                  // 0 hilo recién puesto → 1 malla formada
-                var punta;
+                var e = suaviza(f / 0.3);                  // 0 hilo recién puesto → 1 pasada formada
+                var hoy = accion(K, i);
+                var sigue = accion(K + 1, i);
+                var punta = y0;
                 if (f < 0.3) {
-                    punta = yF + (y0 - yF) * e;
-                } else if (f < 0.82) {
-                    punta = y0 - H * suaviza((f - 0.5) / 0.32);
-                } else {
-                    punta = y0 - H + (yF - (y0 - H)) * suaviza((f - 0.82) / 0.18);
+                    if (hoy === "K" || hoy === "T") { punta = yF + (y0 - yF) * e; }
+                } else if (sigue === "K" || sigue === "T") {
+                    var alto = sigue === "K" ? H : H * 0.52;
+                    punta = f < 0.82 ? y0 - alto * suaviza((f - 0.5) / 0.32)
+                        : y0 - alto + (yF - (y0 - alto)) * suaviza((f - 0.82) / 0.18);
                 }
-                col.push({ x: x, K: K, e: e, punta: punta });
+                col.push({ i: i, x: x, K: K, e: e, punta: punta, cama: cama(i), fuera: hoy === "X" });
             }
             var Kmax = col[0].K;
             var visibles = Math.ceil((h - y0) / ch) + 1;
 
-            function malla(c, k) {
-                // [cabeza, pie] de la malla de la pasada k en la aguja c
-                if (c.K === k) {
-                    return [yF + (y0 - yF) * c.e, yF + (y0 + lh - yF) * c.e];
+            function geom(c, k) {
+                // Forma del hilo de la pasada k en la aguja c
+                var a = accion(k, c.i);
+                var nueva = k === c.K;
+                var pie = nueva ? yF + (y0 + lh - yF) * c.e : y0 + (c.K - k - 1 + c.e) * ch + lh;
+                if (a === "M" || a === "X") {
+                    return { a: "M", pie: pie - s * 0.22 * (nueva ? c.e : 1) };
                 }
-                var cab = y0 + (c.K - k - 1 + c.e) * ch;
-                return [cab, cab + lh];
+                var cab;
+                if (nueva) {
+                    cab = yF + (y0 - yF) * c.e;
+                } else {
+                    var suelta = sigMalla(k, c.i);
+                    cab = suelta > c.K ? y0 : y0 + (c.K - suelta + c.e) * ch;
+                    if (a === "T") { cab += Math.min(s * 0.12, (pie - cab) * 0.2); }
+                }
+                return { a: a, cab: cab, pie: pie };
             }
 
-            // Agujas (detrás de la tela): vástago y gancho
+            // Agujas (detrás de la tela): vástago y gancho; las del plato, más claras
             for (i = 0; i < col.length; i++) {
-                var a = col[i];
-                var arriba = (y0 - a.punta) / H;
-                ctx.strokeStyle = arriba > 0.5 ? "#18181b" : "#a1a1aa";
-                ctx.lineWidth = arriba > 0.5 ? 1.5 : 1.1;
+                var n = col[i];
+                if (n.fuera) { continue; }
+                var arriba = (y0 - n.punta) / H;
+                var atras = n.cama === "B";
+                var lado = atras ? -1 : 1;
+                ctx.strokeStyle = arriba > 0.4 ? (atras ? "#71717a" : "#18181b") : (atras ? "#d4d4d8" : "#a1a1aa");
+                ctx.lineWidth = arriba > 0.4 ? 1.5 : 1.1;
                 ctx.beginPath();
-                ctx.moveTo(a.x, a.punta + H * 1.15);
-                ctx.lineTo(a.x, a.punta - s * 0.1);
-                ctx.arc(a.x + s * 0.1, a.punta - s * 0.1, s * 0.1, Math.PI, Math.PI * 2.2);
+                ctx.moveTo(n.x, n.punta + H * 1.1);
+                ctx.lineTo(n.x, n.punta - s * 0.1);
+                if (atras) {
+                    ctx.arc(n.x - s * 0.1, n.punta - s * 0.1, s * 0.1, 0, -Math.PI * 1.2, true);
+                } else {
+                    ctx.arc(n.x + s * 0.1, n.punta - s * 0.1, s * 0.1, Math.PI, Math.PI * 2.2);
+                }
                 ctx.stroke();
             }
 
-            // Tela: una línea de hilo por pasada, de la más vieja a la más nueva
+            // Tela: un hilo por pasada, de la más vieja a la más nueva
             for (k = Kmax - visibles; k <= Kmax + 1; k++) {
-                var color = colorDe(k);
+                var base = colorDe(k);
                 var fondo = Math.max(0, (Kmax - k - 1) / visibles);
-                ctx.strokeStyle = color;
-                ctx.globalAlpha = Math.max(0, 1 - Math.pow(fondo, 1.7) * 1.05) * (color === GRIS ? 0.8 : 1);
-                ctx.lineWidth = grosor;
-                ctx.beginPath();
-                var ultimo = null;
-                var previo = null;
-                for (i = 0; i < col.length; i++) {
-                    var c = col[i];
-                    if (c.K < k) { break; }
-                    var m = malla(c, k);
-                    var cab = m[0];
-                    var pie = m[1];
-                    var alto = pie - cab;
-                    var rv = Math.min(s * 0.3, alto * 0.3);
-                    var xl = c.x - s / 2;
-                    var yl = previo === null ? pie : (previo + pie) / 2;
-                    var sig = col[i + 1];
-                    var yr = sig && sig.K >= k ? (pie + malla(sig, k)[1]) / 2 : pie;
-                    var q = Math.min(1, alto / (lh * 0.6));     // 0 hilo tendido → 1 malla abierta
-                    var xb = s * (0.25 - 0.05 * q);
-                    var xt = s * (0.25 + 0.05 * q);
-                    if (previo === null) { ctx.moveTo(xl, yl); }
-                    ctx.bezierCurveTo(xl + s * 0.2, yl, c.x - xb + s * 0.03 * q, pie - rv * 0.25, c.x - xb, pie - rv);
-                    ctx.lineTo(c.x - xt, cab + rv);
-                    ctx.bezierCurveTo(c.x - xt - s * 0.04 * q, cab - rv * 0.33, c.x + xt + s * 0.04 * q, cab - rv * 0.33, c.x + xt, cab + rv);
-                    ctx.lineTo(c.x + xb, pie - rv);
-                    ctx.bezierCurveTo(c.x + xb - s * 0.03 * q, pie - rv * 0.25, xl + s * 0.8, yr, xl + s, yr);
-                    previo = pie;
-                    ultimo = xl + s;
+                var velo = Math.min(1, Math.pow(fondo, 2.2) * 1.1) + (base === PALETA[0] ? 0.08 : 0);
+                var pases = def.vanizado ? 2 : 1;
+                for (var pase = 0; pase < pases; pase++) {
+                    var tono = pases === 2 ? (pase === 0 ? PALETA[0] : PALETA[1]) : base;
+                    var dy = pases === 2 ? (pase === 0 ? -grosor * 0.75 : grosor * 0.75) : 0;
+                    var ultimo = null;
+                    var previo = null;
+                    for (i = 0; i < col.length; i++) {
+                        var c = col[i];
+                        if (c.K < k) { break; }
+                        var g = geom(c, k);
+                        var pie = g.pie + dy;
+                        var xl = c.x - s / 2;
+                        var yl = previo === null ? pie : (previo + pie) / 2;
+                        var sig = col[i + 1];
+                        var yr = sig && sig.K >= k ? (pie + geom(sig, k).pie + dy) / 2 : pie;
+                        var detras = c.cama === "B";
+                        ctx.strokeStyle = mezclaHex(tono, FONDO, Math.min(1, velo + (detras ? 0.34 : 0)));
+                        ctx.lineWidth = detras ? grosor * 0.8 : grosor;
+                        ctx.beginPath();
+                        ctx.moveTo(xl, yl);
+                        if (g.a === "M") {
+                            ctx.bezierCurveTo(xl + s * 0.3, yl, c.x - s * 0.2, pie, c.x, pie);
+                            ctx.bezierCurveTo(c.x + s * 0.2, pie, xl + s * 0.7, yr, xl + s, yr);
+                        } else {
+                            var cab = g.cab + dy;
+                            var largo = pie - cab;
+                            var rv = Math.min(s * 0.3, largo * 0.3);
+                            var q = Math.min(1, largo / (lh * 0.6));     // 0 hilo tendido → 1 malla abierta
+                            var carga = g.a === "T";
+                            var xb = carga ? s * (0.25 + 0.13 * q) : s * (0.25 - 0.05 * q);
+                            var xt = carga ? s * (0.25 + 0.03 * q) : s * (0.25 + 0.05 * q);
+                            ctx.bezierCurveTo(xl + s * 0.2, yl, c.x - xb + s * 0.03 * q, pie - rv * 0.25, c.x - xb, pie - rv);
+                            ctx.lineTo(c.x - xt, cab + rv);
+                            ctx.bezierCurveTo(c.x - xt - s * 0.04 * q, cab - rv * 0.33, c.x + xt + s * 0.04 * q, cab - rv * 0.33, c.x + xt, cab + rv);
+                            ctx.lineTo(c.x + xb, pie - rv);
+                            ctx.bezierCurveTo(c.x + xb - s * 0.03 * q, pie - rv * 0.25, xl + s * 0.8, yr, xl + s, yr);
+                        }
+                        ctx.stroke();
+                        previo = pie;
+                        ultimo = xl + s;
+                    }
+                    // Del último punto tejido al alimentador y de ahí a la bobina
+                    var xf = X - k * L;
+                    if (xf > -s && xf < w + s * 2) {
+                        ctx.strokeStyle = tono;
+                        ctx.lineWidth = grosor;
+                        ctx.beginPath();
+                        ctx.moveTo(ultimo === null ? -s : ultimo, yF + dy);
+                        ctx.lineTo(xf, yF + dy);
+                        ctx.stroke();
+                        ctx.setLineDash([5, 3]);
+                        ctx.lineDashOffset = t * 40 * (vel / 0.3);
+                        ctx.lineWidth = 1.3;
+                        ctx.beginPath();
+                        ctx.moveTo(xf, yF);
+                        ctx.quadraticCurveTo(xf + s * (0.5 + pase * 0.5), yF * 0.45, xf + s * (2.2 + pase * 1.6), -4);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
                 }
-                // Del último punto tejido al alimentador y de ahí a la bobina
-                var xf = X - k * L;
-                if (xf > -s && xf < w + s * 2) {
-                    if (ultimo === null) { ctx.moveTo(-s, yF); }
-                    ctx.lineTo(xf, yF);
-                    ctx.stroke();
-                    ctx.setLineDash([5, 3]);
-                    ctx.lineDashOffset = t * 40 * (vel / 0.24);
-                    ctx.lineWidth = 1.3;
-                    ctx.beginPath();
-                    ctx.moveTo(xf, yF);
-                    ctx.quadraticCurveTo(xf + s * 0.5, yF * 0.45, xf + s * 2.2, -4);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    ctx.globalAlpha = 1;
+                var xa = X - k * L;
+                if (xa > -s && xa < w + s * 2) {
                     ctx.fillStyle = "#fff";
                     ctx.strokeStyle = "#18181b";
                     ctx.lineWidth = 1.2;
                     ctx.beginPath();
-                    ctx.arc(xf, yF, Math.max(3, s * 0.13), 0, TAU);
+                    ctx.arc(xa, yF, Math.max(3, s * 0.13), 0, TAU);
                     ctx.fill();
-                    ctx.stroke();
-                } else {
                     ctx.stroke();
                 }
             }
-            ctx.globalAlpha = 1;
         });
     }
 
@@ -2069,7 +2143,7 @@
         }
         todos('canvas[data-qb-anim="circular"]').forEach(maquinaCircular);
         todos('canvas[data-qb-anim="fibras"]').forEach(fibras);
-        todos('canvas[data-qb-anim="una_fontura"]').forEach(puntoUnaFontura);
+        todos('canvas[data-qb-anim="dibujo"]').forEach(dibujoTejido);
         todos('canvas[data-qb-anim="jet"]').forEach(jet);
         todos('canvas[data-qb-anim="rama"]').forEach(rama);
         todos('canvas[data-qb-anim="tela"]').forEach(tela);
