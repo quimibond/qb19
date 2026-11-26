@@ -307,7 +307,7 @@ class QbNominaIncidencias(models.Model):
             turno, nota_turno = self._turno_semana(emp, version, marcas.get(emp.id, []),
                                                    ausencias.get(emp.id, {}), hoys[0], lunes)
             rs = [calc.calcular_semana(
-                lunes, programado[emp.id], calc.marcas_hasta(marcas.get(emp.id, []), hoy),
+                lunes, programado[emp.id], calc.marcas_hasta(marcas.get(emp.id, []), hoy, turno=calc.TURNOS.get(turno)),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
                 hoy, entradas, turno=turno if turno in calc.TURNOS else None,
                 comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos,
