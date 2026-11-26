@@ -164,6 +164,18 @@ class AccountMoveSemaforo(models.Model):
         self._sat_semaforo_update()
         return True
 
+    def action_sat_attach_pdf(self):
+        """Acción → Adjuntar PDF del SAT: el PDF de cada CFDI ligado que no lo
+        tenga (para las facturas creadas antes de 1.33.0)."""
+        done = 0
+        for move in self:
+            for cfdi in move.sat_cfdi_ids.filtered(lambda c: c.tipo in ('I', 'E')):
+                if cfdi._attach_pdf_to_move(move) == _('PDF adjunto a la factura'):
+                    done += 1
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': _('PDF del SAT'), 'type': 'info', 'sticky': False,
+            'message': _('%(done)s PDF adjuntos en %(moves)s facturas.') % {'done': done, 'moves': len(self)}}}
+
     def action_sat_post_green(self):
         """Publica las facturas verdes de la selección (recalcula antes).
         Las que no quedan en verde se quedan en borrador."""
