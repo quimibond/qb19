@@ -385,6 +385,35 @@
                         <t t-call="website_quimibond.tipos_tejido"/>
                     </div>
                 </section>
+                <section class="qb-sec" id="dibujos">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Dibujos de tejido</span>
+                            <h2 class="qb-reveal">Así se forma cada dibujo, pasada por pasada.</h2>
+                            <p class="qb-lead qb-reveal">Cada dibujo sale de decidir qué agujas hacen malla, cuáles cargan el hilo y cuáles se anulan en cada pasada. Pase el cursor sobre uno para acelerarlo.</p>
+                        </div>
+                        <t t-foreach="qb_dibujos" t-as="grupo">
+                            <section class="qb-dibujos">
+                                <header class="qb-familia__cab qb-reveal">
+                                    <h3 t-out="grupo['nombre']"/>
+                                    <p t-out="grupo['texto']"/>
+                                </header>
+                                <div class="qb-dibujos__rejilla">
+                                    <t t-foreach="grupo['dibujos']" t-as="d">
+                                        <article class="qb-card qb-tipo qb-spot qb-reveal">
+                                            <div class="qb-tipo__dib qb-tipo__dib--anim"><canvas data-qb-anim="dibujo" t-att-data-qb-dibujo="d['clave']" role="img" t-att-aria-label="d['nombre']"/></div>
+                                            <div class="qb-tipo__cuerpo">
+                                                <span class="qb-mono" t-out="grupo['nombre']"/>
+                                                <h4 t-out="d['nombre']"/>
+                                                <p t-out="d['texto']"/>
+                                            </div>
+                                        </article>
+                                    </t>
+                                </div>
+                            </section>
+                        </t>
+                    </div>
+                </section>
                 <section class="qb-sec">
                     <div class="qb-container">
                         <div class="qb-sec__cab">

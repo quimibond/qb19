@@ -82,6 +82,58 @@ def familias():
     return [dict(f, tejidos=[t for t in TEJIDOS if t['familia'] == f['clave']]) for f in FAMILIAS]
 
 
+# Dibujos de tejido de punto (ligamentos), con los nombres del catálogo de
+# dibujos de la planta (claves de codificación de artículos, parte «dibujo»).
+# La «clave» es la del script (DIBUJOS en static/src/js/quimibond.js), que
+# anima cómo se forma cada uno. Dirección los aprobó el 2026-11-26.
+DIBUJOS = [
+    {
+        'clave': 'una_fontura',
+        'nombre': 'Una fontura',
+        'texto': 'Un juego de agujas. Del jersey salen los demás dibujos, cambiando qué agujas hacen malla, '
+                 'cuáles cargan el hilo y cuáles se anulan en cada pasada.',
+        'dibujos': [
+            {'clave': 'jersey', 'nombre': 'Jersey',
+             'texto': 'Todas las agujas hacen malla en todas las pasadas. Es el dibujo base de una fontura.'},
+            {'clave': 'listado', 'nombre': 'Listado',
+             'texto': 'Jersey con hilos de distinto color por pasada: rayas a lo ancho de la tela.'},
+            {'clave': 'vanizado', 'nombre': 'Vanizado',
+             'texto': 'Dos hilos entran juntos a cada aguja: uno queda a la cara y el otro al revés.'},
+            {'clave': 'pique_cargas', 'nombre': 'Piqué cargas',
+             'texto': 'Agujas alternas cargan el hilo sin soltar la malla. De ahí sale el relieve del piqué.'},
+            {'clave': 'pique_anulado', 'nombre': 'Piqué anulado',
+             'texto': 'Agujas alternas no suben y el hilo pasa de largo por detrás.'},
+            {'clave': 'crepe_cargas', 'nombre': 'Crepé cargas',
+             'texto': 'Cargas repartidas sin orden aparente: superficie granulada.'},
+            {'clave': 'crepe_anulado', 'nombre': 'Crepé anulado',
+             'texto': 'Anulados repartidos sin orden aparente: grano más cerrado y firme.'},
+            {'clave': 'french_terry', 'nombre': 'French terry',
+             'texto': 'Un hilo de felpa se amarra con cargas y flota por el revés entre pasadas de jersey.'},
+            {'clave': 'flece', 'nombre': 'Flece',
+             'texto': 'Tres hilos: base, felpa y amarre. La felpa del revés se percha en el acabado.'},
+            {'clave': 'desagujado', 'nombre': 'Desagujado',
+             'texto': 'Se retiran agujas a intervalos: queda una canaleta a lo largo de la tela.'},
+            {'clave': 'jacquard', 'nombre': 'Jacquard',
+             'texto': 'Cada aguja elige qué color teje en cada pasada: el dibujo sale del tejido.'},
+        ],
+    },
+    {
+        'clave': 'doble_fontura',
+        'nombre': 'Doble fontura',
+        'texto': 'Dos juegos de agujas, cilindro y plato. La tela tiene mallas por las dos caras.',
+        'dibujos': [
+            {'clave': 'rib', 'nombre': 'Rib',
+             'texto': 'Las agujas del cilindro y del plato tejen alternadas. Mucha elasticidad a lo ancho.'},
+            {'clave': 'interlock', 'nombre': 'Interlock',
+             'texto': 'Dos rib cruzados, uno por pasada. Tela lisa por las dos caras y estable.'},
+            {'clave': 'punto_roma', 'nombre': 'Punto de Roma',
+             'texto': 'Dos pasadas de interlock, una solo de cilindro y una solo de plato. Tela con cuerpo.'},
+            {'clave': 'cardigan', 'nombre': 'Cardigan',
+             'texto': 'Una fontura hace malla mientras la otra carga, y se alternan. Tela gruesa y esponjosa.'},
+        ],
+    },
+]
+
 PRESENTACIONES = [
     'Tela tubular', 'Tela abierta', 'Teñida en jet', 'Termofijada en rama', 'Fusionable por espolvoreo',
     'Cortada y perforada',

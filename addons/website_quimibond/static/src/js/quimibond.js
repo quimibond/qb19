@@ -373,7 +373,7 @@
         lienzo(canvas, function (ctx, w, h, t, dt) {
             vel += (objetivo - vel) * Math.min(1, dt * 2.5);
             avance += vel * dt;
-            var N = Math.max(12, Math.round(w / 30));     // agujas a la vista
+            var N = Math.max(8, Math.round(w / 26));      // agujas a la vista
             N = Math.ceil(N / C) * C;
             var s = w / N;                                 // paso entre agujas
             var ch = s * 0.66;                             // alto de una pasada

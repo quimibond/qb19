@@ -178,6 +178,17 @@ solicitud del sitio (cotización, llamada, diseñador…) se asigna al vendedor 
 **Atiende las solicitudes del sitio**; las del mercado de confección, al de
 **Atiende las solicitudes de confección**. Sin vendedor nadie recibe aviso.
 
+## Dibujos de tejido (desde 1.16.0)
+
+`/planta#dibujos` anima cómo se forma cada dibujo de punto, con los nombres
+del catálogo de la planta: once de una fontura (jersey, listado, vanizado,
+piqué y crepé de cargas y de anulado, french terry, flece, desagujado y
+jacquard) y cuatro de doble fontura (rib, interlock, punto de Roma y
+cardigan). Nombres y textos en `DIBUJOS` de `controllers/contenido.py`; el
+ligamento de cada uno (malla `K`, carga `T`, anulado `M`, aguja retirada `X`
+por aguja y pasada) en `DIBUJOS` de `static/src/js/quimibond.js`, con la misma
+clave. Un dibujo nuevo va en los dos lados y con su inglés en el `.po`.
+
 ## Versión en inglés
 
 El módulo está escrito en español. `en_US` es el idioma de origen de Odoo y
