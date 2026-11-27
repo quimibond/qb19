@@ -14,6 +14,14 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.201.1 — 2026-11-27
+
+Solo a producción: el arreglo de 57.202.6 (#1172) sobre 57.201.0, sin el resto de 57.202.x.
+
+### Corregido
+
+- **Abrir un desarrollo en etapa Muestra** con todas sus órdenes de muestra terminadas tronaba (`AttributeError: 'project.project' object has no attribute 'sgi_dev_run_validated_by_id'`): el paso pendiente (C1.11 / C1.12) buscaba «Corrida validada por» en el proyecto, pero vive en cada orden de muestra. Ahora C1.11 queda pendiente mientras alguna orden no esté validada y C1.12 corre desde la última validación.
+
 ## 19.0.57.201.0 — 2026-11-18
 
 Rango de mínimo a máximo en las características (fichas 2.30.0, pedido de Jose del 18-nov-2026).
