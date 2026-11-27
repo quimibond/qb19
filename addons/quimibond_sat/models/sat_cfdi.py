@@ -787,6 +787,43 @@ class SatCfdi(models.Model):
             attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
         return _('XML adjunto a la factura')
 
+    PDF_ACCEPT = 'application/pdf'
+
+    def _fetch_pdf(self):
+        """PDF del CFDI desde Syntage (bytes): la misma ruta del XML
+        (`/invoices/{id}/cfdi`) con Accept application/pdf. Vacío si Syntage
+        no lo tiene."""
+        self.ensure_one()
+        if not self.syntage_id:
+            return b''
+        content = self.env['sat.syntage.client']._request_raw(
+            self.CFDI_XML_PATH.format(id=self.syntage_id), accept=self.PDF_ACCEPT)
+        content = (content or b'').lstrip()
+        return content if content.startswith(b'%PDF') else b''
+
+    def _attach_pdf_to_move(self, move):
+        """Adjunta el PDF del CFDI a la factura, como nota en el chatter, junto
+        al XML (petición de Contabilidad, 26-nov-2026). Nunca revienta: la
+        factura vale sin PDF. Devuelve un texto con lo que pasó."""
+        self.ensure_one()
+        name = '%s.pdf' % (self.uuid or '').upper()
+        Attachment = self.env['ir.attachment'].sudo()
+        if Attachment.search_count([('res_model', '=', 'account.move'), ('res_id', '=', move.id), ('name', '=', name)]):
+            return _('el PDF ya estaba adjunto')
+        try:
+            content = self._fetch_pdf()
+        except Exception as exc:  # noqa: BLE001 — la factura vale sin PDF
+            _logger.warning('sat.cfdi %s: PDF no adjuntado: %s', self.uuid, exc)
+            return _('PDF no adjuntado (%s)') % exc
+        if not content:
+            return _('Syntage no tiene el PDF de este CFDI')
+        att = Attachment.create({'name': name, 'raw': content, 'mimetype': 'application/pdf',
+                                 'res_model': 'account.move', 'res_id': move.id})
+        move.with_context(disable_attachment_import=True).message_post(
+            body=_('PDF del CFDI %s (Syntage)') % (self.uuid or '').upper(),
+            attachment_ids=[att.id], message_type='comment', subtype_xmlid='mail.mt_note')
+        return _('PDF adjunto a la factura')
+
     # Aceptación automática: factura sin XML, mismo RFC, total exacto (al
     # centavo), misma moneda, fecha a ±AUTO_ACCEPT_DAYS y sin otra candidata.
     AUTO_ACCEPT_DAYS = 10

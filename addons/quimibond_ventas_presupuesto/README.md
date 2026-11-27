@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## El mes del pronóstico por fecha de entrega (19.0.3.37.0, 2026-11-26)
+
+Jose revisó diciembre 2026 en producción: las tres entregas de ContiTech del 2-dic (50,000 m, ya con pedido) se
+contaban en noviembre, porque el mes de cada línea del pronóstico salía del lunes de su semana (30-nov). Ahora el
+mes (`qb.forecast.line.month`) sale de la **fecha de entrega del cliente** y solo sin ella del lunes de la semana.
+Lo usan el presupuesto del mes («Armar»), la propuesta del anual (meses cubiertos y renglones), la cantidad
+pronosticada de cada renglón del anual, su soporte y el análisis presupuesto/pronóstico/real. La migración
+recalcula el mes de las líneas con fecha de entrega; un presupuesto del mes ya armado se vuelve a armar desde su
+ficha. La semana del pronóstico (y la liga con pedidos y releases) no cambia. Los meses que la propuesta del anual
+da por cubiertos siguen saliendo de la última semana pronosticada del cliente.
+
 ## El mes contra el anual solo donde el anual trae el mercado (19.0.3.36.0, 2026-11-25)
 
 Jose revisó noviembre 2026 en producción: el mes sumaba 16.0 M contra 2.7 M del anual. El que viene corto es
