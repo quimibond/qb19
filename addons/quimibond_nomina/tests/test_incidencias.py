@@ -395,6 +395,39 @@ class TestIncidenciasCalculo(TransactionCase):
         self.assertEqual(calc.leer_entradas('basura'), calc.ENTRADAS_DEFAULT)
         self.assertEqual(calc.leer_entradas(''), calc.ENTRADAS_DEFAULT)
 
+    def test_salida_sin_entrada_no_es_turno_de_noche(self):
+        """Mario Gómez Soria, semana 49: turno 1, el martes le faltó la entrada. Su salida de las 17:05 se
+        juntaba con la entrada del miércoles 06:37 en un «turno» de 13.5 h fuera de su turno: 11 HE."""
+        lunes = date(2026, 11, 23)
+        marcas = [dt(2026, 11, 23, 6, 38), dt(2026, 11, 23, 17, 6), dt(2026, 11, 24, 17, 5),
+                  dt(2026, 11, 25, 6, 37), dt(2026, 11, 25, 17, 13)]
+        codigo, _p = calc.inferir_turno(lunes, marcas, preferido='1')
+        self.assertEqual(codigo, '1')
+        r = calc.calcular_semana(lunes, HORARIO, marcas, turno=codigo, hoy=date(2026, 11, 25))
+        self.assertEqual(r['he_propuestas'], 0)
+        self.assertIn('Ma una sola checada (17:05)', r['notas'])
+        self.assertEqual(r['faltas'], 0, 'el martes checó: no es falta, es una checada que corregir')
+        # La agrupación sin turno se queda como estaba (el turno de noche sin checar a la comida).
+        martes = dt(2026, 11, 24, 17, 5)
+        self.assertIn((martes, dt(2026, 11, 25, 6, 37), 2), calc.agrupar_turnos(marcas))
+        self.assertIn((martes, martes, 1), calc.agrupar_turnos(marcas, turno='1'))
+
+    def test_noche_sin_comida_se_junta_con_su_turno(self):
+        marcas = [dt(2026, 11, 23, 18, 55), dt(2026, 11, 24, 7, 4)]
+        self.assertEqual(len(calc.agrupar_turnos(marcas, turno='4')), 1)
+        self.assertEqual(len(calc.agrupar_turnos(marcas, turno='1')), 2)
+        codigo, _p = calc.inferir_turno(date(2026, 11, 23), marcas, preferido='1')
+        self.assertNotIn(codigo, ('1', '2'), 'la noche no se parte por tener RH otro turno')
+
+    def test_entrada_anticipada_no_es_extra(self):
+        """Dirección, 26-nov-2026: llegar antes no es extra; el extra de la salida, en horas completas."""
+        lunes = date(2026, 11, 23)
+        marcas = [dt(2026, 11, 23, 5, 30), dt(2026, 11, 23, 17, 50),     # 1.5 h antes, 50 min después
+                  dt(2026, 11, 24, 6, 55), dt(2026, 11, 24, 18, 20)]     # 1 h 20 min después
+        r = calc.calcular_semana(lunes, HORARIO, marcas, turno='1', hoy=date(2026, 11, 24))
+        self.assertEqual(r['he_propuestas'], 1)
+        self.assertTrue(any(n.startswith('Lu entró 1 h 30 min antes (05:30)') for n in r['notas']))
+
 
 class TestIncidenciasGenerar(TransactionCase):
 

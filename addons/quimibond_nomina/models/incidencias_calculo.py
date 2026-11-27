@@ -97,6 +97,18 @@ la nómina 49):
   trabajados» para pagarlo como el art. 75 de la LFT (salario doble además del
   día). La prima dominical de un festivo en domingo sale como siempre.
 
+**Dirección, 26-nov-2026** (1.28.0, caso de Mario Gómez Soria en la semana 49):
+
+* La **entrada anticipada no es tiempo extra**: el turno se cuenta desde su
+  entrada de referencia. Si llegó una hora o más antes queda la nota, para que
+  el supervisor lo autorice a mano si de verdad se le citó antes.
+* El extra de la salida se propone **en horas completas** por día (``floor``).
+* Con turno, una checada sola solo se junta con la siguiente si las dos caben en
+  una jornada del turno (``agrupar_turnos``): a quien es de día y le faltó la
+  entrada, su salida de las 17:00 ya no se junta con la entrada de la mañana
+  siguiente en un «turno de noche» fuera de su turno, que salía como 11 horas
+  extra. El turno se reconoce agrupando las checadas con cada turno candidato.
+
 **Respuestas de RH del 24-nov-2026** (correo de Miguel Medina, 1.26.0):
 
 * Las **6 horas extra del turno 4** solo se pagan en Inspección, Acabado,
@@ -194,8 +206,27 @@ def leer_entradas(texto):
     return tuple(entradas) or ENTRADAS_DEFAULT
 
 
-def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
-    """Checadas (datetimes locales) → ``[(primera, última, cuántas)]``."""
+def _cabe_en_jornada(inicio, marca, turno):
+    """¿Una checada sola en ``inicio`` y la siguiente en ``marca`` son la entrada y la salida de una jornada
+    del ``turno`` (``{día: (entrada, horas)}``)? La entrada a menos de ``VENTANA_TURNO`` del inicio de la
+    jornada y la salida a más tardar ``VENTANA_TURNO`` después de su fin."""
+    lunes = inicio.date() - timedelta(days=inicio.weekday())
+    for _dia, j0, j1, _horas in _jornadas_turno(lunes, turno):
+        if abs(inicio - j0) <= VENTANA_TURNO and marca <= j1 + VENTANA_TURNO:
+            return True
+    return False
+
+
+def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX, turno=None):
+    """Checadas (datetimes locales) → ``[(primera, última, cuántas)]``.
+
+    Una checada sola acepta como salida la siguiente hasta ``turno_max`` después (el turno de 12 de noche
+    sin checar a la comida). Con ``turno`` (``{día: (entrada, horas)}`` o su código), si la siguiente queda
+    a ``separacion`` o más, solo si las dos caben en una jornada del turno: a quien trabaja de día y le
+    faltó la entrada, su salida de las 17:00 no se junta con la entrada del día siguiente en una «jornada»
+    de la tarde a la mañana (Mario Gómez, semana 49)."""
+    if isinstance(turno, str):
+        turno = TURNOS.get(turno)
     turnos = []
     for marca in sorted(marcas):
         if turnos:
@@ -203,7 +234,9 @@ def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
             if marca - fin <= DUPLICADA:
                 turnos[-1][1] = marca
                 continue
-            if marca - inicio <= turno_max and (n == 1 or marca - fin < separacion):
+            if marca - inicio <= turno_max and (
+                    marca - fin < separacion
+                    or (n == 1 and (not turno or _cabe_en_jornada(inicio, marca, turno)))):
                 turnos[-1][1] = marca
                 turnos[-1][2] += 1
                 continue
@@ -211,13 +244,13 @@ def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
     return [tuple(t) for t in turnos]
 
 
-def marcas_hasta(marcas, dia):
+def marcas_hasta(marcas, dia, turno=None):
     """Las checadas de los turnos que empiezan a más tardar el ``dia`` (el de noche que entra ese día y sale
     al siguiente se queda completo). Sin ``dia``, todas. Sirve para medir la semana solo hasta su corte."""
     if not dia:
         return list(marcas)
     limite = datetime.combine(dia + timedelta(days=1), time(0, 0))
-    fuera = [(inicio, fin) for inicio, fin, _n in agrupar_turnos(marcas) if inicio >= limite]
+    fuera = [(inicio, fin) for inicio, fin, _n in agrupar_turnos(marcas, turno=turno) if inicio >= limite]
     return [m for m in marcas if not any(inicio <= m <= fin for inicio, fin in fuera)]
 
 
@@ -271,16 +304,20 @@ def inferir_turno(lunes, marcas, ausencias=None, contrato_desde=None, contrato_h
     1 y el 2, que solo cambian por una hora. Sin checadas en la semana: ``None``."""
     ausencias = ausencias or {}
     domingo = lunes + timedelta(days=6)
-    trabajado = []
-    for inicio, fin, n in agrupar_turnos(marcas):
-        if not lunes <= entrada_referencia(inicio, ENTRADAS_TURNOS).date() <= domingo:
-            continue
-        if n < 2:
-            inicio, fin = inicio - MEDIA_CHECADA, inicio + MEDIA_CHECADA
-        trabajado.append((inicio, fin))
-    if not trabajado:
+
+    def trabajado_con(turno):
+        # Las checadas se agrupan con las jornadas de cada turno candidato (``agrupar_turnos``).
+        trabajado = []
+        for inicio, fin, n in agrupar_turnos(marcas, turno=turno):
+            if not lunes <= entrada_referencia(inicio, ENTRADAS_TURNOS).date() <= domingo:
+                continue
+            if n < 2:
+                inicio, fin = inicio - MEDIA_CHECADA, inicio + MEDIA_CHECADA
+            trabajado.append((inicio, fin))
+        return trabajado
+
+    if not trabajado_con(None):
         return None, {}
-    total = sum((f - i).total_seconds() / 3600.0 for i, f in trabajado)
 
     def cuenta(dia):
         return ((not contrato_desde or dia >= contrato_desde) and (not contrato_hasta or dia <= contrato_hasta)
@@ -290,6 +327,8 @@ def inferir_turno(lunes, marcas, ausencias=None, contrato_desde=None, contrato_h
     for codigo, turno in TURNOS.items():
         if codigo in SOLO_RH and codigo != preferido:
             continue
+        trabajado = trabajado_con(turno)
+        total = sum((f - i).total_seconds() / 3600.0 for i, f in trabajado)
         dentro = 0.0
         faltantes = []
         for dia, j0, j1, horas in _jornadas_turno(lunes, turno, semanas=(0,)):
@@ -320,6 +359,11 @@ def _toca_domingo(dow, entrada, horas):
     inicio = datetime.combine(datetime(2026, 11, 23).date() + timedelta(days=dow), entrada)  # un lunes
     fin = inicio + timedelta(hours=horas)
     return inicio.weekday() == 6 or (fin - timedelta(minutes=1)).weekday() == 6
+
+
+def _fmt_duracion(delta):
+    minutos = int(delta.total_seconds() // 60)
+    return '%d h %02d min' % divmod(minutos, 60) if minutos % 60 else '%d h' % (minutos // 60)
 
 
 def _fmt(horas):
@@ -363,7 +407,7 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
     turnos_dia = {}
     jornadas = _jornadas_turno(lunes, turno) if turno else []
     usadas = set()
-    for inicio, fin, n in agrupar_turnos(marcas):
+    for inicio, fin, n in agrupar_turnos(marcas, turno=turno):
         jornada = None
         if turno:
             cerca = [j for j in jornadas if j[1] not in usadas and abs(inicio - j[1]) <= VENTANA_TURNO]
@@ -491,6 +535,12 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             if n < 2:
                 r['notas'].append('%s una sola checada (%s)' % (NOMBRES_DIA[i], inicio.strftime('%H:%M')))
                 continue
+            # Lo que llega antes de su hora no es extra (se cuenta desde la entrada de referencia). Si se le
+            # citó antes, el supervisor lo autoriza a mano: la nota lo deja a la vista (Dirección, 26-nov-2026).
+            anticipada = ref - inicio
+            if anticipada >= timedelta(hours=1):
+                r['notas'].append('%s entró %s antes (%s): no cuenta como extra; si se le citó, autorizarlo a mano'
+                                  % (NOMBRES_DIA[i], _fmt_duracion(anticipada), inicio.strftime('%H:%M')))
             horas = (fin - max(inicio, ref)).total_seconds() / 3600.0
             hueco = comida(marcas, inicio, fin)
             if hueco:

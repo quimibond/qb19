@@ -184,6 +184,36 @@ class TestChecadas(TransactionCase):
         self.assertEqual((ayer.check_in, ayer.check_out), (datetime(2026, 10, 20, 21, 1, 55), datetime(2026, 10, 20, 23, 35, 44)))
         self.assertEqual((hoy.check_in, hoy.check_out), (datetime(2026, 10, 21, 13, 3, 50), datetime(2026, 10, 21, 23, 1, 0)))
 
+    def test_salida_sin_entrada_no_se_junta_con_la_manana_siguiente(self):
+        """Mario Gómez Soria, 24-nov-2026: de día (06:35 a 17:05), un martes le faltó la entrada. Su salida
+        de las 17:05 quedaba abierta y se cerraba con la entrada del miércoles 06:37: una «asistencia» de
+        13.5 h de la tarde a la mañana. Con su historial se reconoce que era una salida."""
+        for d in (16, 17, 18):
+            self._attlog('12\t2026-11-%d 06:35:00\t255\t1\t0' % d, '12\t2026-11-%d 17:04:00\t255\t1\t0' % d)
+        self._attlog('12\t2026-11-19 17:05:00\t255\t1\t0')
+        self.Checada._cron_emparejar()
+        self._attlog('12\t2026-11-20 06:37:00\t255\t1\t0', '12\t2026-11-20 17:10:00\t255\t1\t0')
+        self.Checada._cron_emparejar()
+        atts = self._asistencias(self.por_referencia)
+        self.assertEqual(len(atts), 5)
+        salida, viernes = atts[3], atts[4]
+        self.assertEqual(salida.check_in, datetime(2026, 11, 19, 23, 5, 0))
+        self.assertAlmostEqual(salida.worked_hours, 1 / 60, places=3, msg='se cierra en cero, nunca se inventan')
+        self.assertEqual(salida.qb_checada_in_id.state, 'huerfana')
+        self.assertIn('Salida sin entrada', salida.qb_checada_in_id.nota)
+        self.assertEqual((viernes.check_in, viernes.check_out),
+                         (datetime(2026, 11, 20, 12, 37, 0), datetime(2026, 11, 20, 23, 10, 0)))
+
+    def test_noche_sin_comida_con_historial_de_noche(self):
+        """Quien trabaja de noche sin checar a la comida sigue siendo un turno de 12 horas."""
+        for d in (16, 17, 18):
+            self._attlog('12\t2026-11-%d 18:55:00\t255\t1\t0' % d, '12\t2026-11-%d 07:02:00\t255\t1\t0' % (d + 1))
+        self._attlog('12\t2026-11-19 18:56:00\t255\t1\t0', '12\t2026-11-20 07:03:00\t255\t1\t0')
+        self.Checada._cron_emparejar()
+        atts = self._asistencias(self.por_referencia)
+        self.assertEqual(len(atts), 4)
+        self.assertAlmostEqual(atts[3].worked_hours, 12.1167, places=2)
+
     def test_reconstruir_asistencias(self):
         """La migración de 1.7.0 rehace lo que armó el checador; lo capturado a mano no se toca."""
         self._attlog('12\t2026-10-05 06:58:00\t0\t1\t0', '12\t2026-10-05 17:00:00\t1\t1\t0',
