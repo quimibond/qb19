@@ -294,6 +294,17 @@ Por persona, en orden de tiempo:
   la regla nueva las asistencias que había armado el checador
   (`qb.checada._reconstruir_asistencias()`; las capturadas a mano no se
   tocan). Lo mismo se puede volver a correr si hiciera falta.
+- **Salida sin entrada** (desde 1.9.0). A quien trabaja de día y le falta la
+  entrada, su salida de la tarde queda sola y la entrada de la mañana
+  siguiente cabe en las 16 horas: se armaba una «asistencia» de la tarde a la
+  mañana (Mario Gómez Soria, martes 24-nov-2026: 17:05 a 06:37, 13.5 h). Se
+  reconoce con su propio historial de 60 días (asistencias completas del
+  checador de 4 a 16 h): la checada abierta está a menos de 90 minutos de 3 o
+  más de sus salidas y de ninguna de sus entradas, y la nueva a menos de 90
+  minutos de 3 o más de sus entradas. Entonces la abierta se cierra en cero y
+  su checada queda **huérfana** («Salida sin entrada…»), y la nueva abre su
+  propio turno. Quien rota de día a noche (entradas y salidas a las mismas
+  horas) no entra en la regla y queda como antes.
 - Dos checadas en menos de `qb_checador.minutos_duplicado` minutos (default 2)
   son la misma: la segunda queda **ignorada**.
 - Una entrada sin salida en más de `qb_checador.horas_turno_max` horas
