@@ -14,6 +14,12 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.6 — 2026-11-27
+
+### Corregido
+
+- **Abrir un desarrollo en etapa Muestra** con todas sus órdenes de muestra terminadas tronaba (`AttributeError: 'project.project' object has no attribute 'sgi_dev_run_validated_by_id'`): el paso pendiente (C1.11 / C1.12) buscaba «Corrida validada por» en el proyecto, pero vive en cada orden de muestra. Ahora C1.11 queda pendiente mientras alguna orden no esté validada y C1.12 corre desde la última validación.
+
 ## 19.0.57.202.5 — 2026-11-24
 
 Segunda tanda de las fallas viejas del suite del SGI en Odoo.sh (corrida completa del 24-nov: 38 fallas y 63 errores anteriores a 57.202.3).
