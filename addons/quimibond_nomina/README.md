@@ -1071,6 +1071,29 @@ Dudas de Miguel Medina al correr la semana 49 (25-nov-2026):
   fecha de fin (Carlos Luna, Q-129, quincenal desde el 26-oct-2026) seguía
   saliendo.
 
+### 26. Entrada anticipada y salida sin entrada (1.28.0)
+
+Caso de Mario Gómez Soria (S-19, turno 1) en la semana 49: el martes 24 le
+faltó la entrada; su salida de las 17:05 y la entrada del miércoles 06:37 se
+juntaban en un «turno de noche» fuera de su turno, y las 11.6 horas de 19:00 a
+06:37 salían como tiempo extra (11 HE propuestas). Reglas de Dirección
+(26-nov-2026):
+
+- **La entrada anticipada no es tiempo extra**: el turno se cuenta desde su
+  entrada de referencia, como ya se hacía. Si llegó una hora o más antes queda
+  la nota «entró … antes: no cuenta como extra; si se le citó, autorizarlo a
+  mano», para que el supervisor lo capture en HE autorizadas cuando de verdad
+  se le citó.
+- **El extra de la salida en horas completas** por día (`floor`), como ya se
+  hacía.
+- **Una checada sola se junta con la siguiente solo si caben en una jornada de
+  su turno** (`agrupar_turnos(…, turno=…)`): la entrada a menos de 4 horas del
+  inicio de una jornada y la salida a más tardar 4 horas después de su fin.
+  Sin turno queda la regla de antes (acepta la salida hasta 16 horas después).
+  `inferir_turno` agrupa las checadas con cada turno candidato, así la noche
+  sin checar a la comida sigue siendo un turno del 4, 5 o 6. Con esto la
+  salida suelta queda como «una sola checada» y el supervisor la corrige.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es

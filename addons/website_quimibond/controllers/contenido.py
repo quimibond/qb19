@@ -82,6 +82,104 @@ def familias():
     return [dict(f, tejidos=[t for t in TEJIDOS if t['familia'] == f['clave']]) for f in FAMILIAS]
 
 
+# Dibujos de tejido de punto (ligamentos), con los nombres del catálogo de
+# dibujos de la planta (claves de codificación de artículos, parte «dibujo»).
+# La «clave» es la del script (DIBUJOS en static/src/js/quimibond.js), que
+# anima cómo se forma cada uno. Dirección los aprobó el 2026-11-26.
+DIBUJOS = [
+    {
+        'clave': 'una_fontura',
+        'nombre': 'Una fontura',
+        'texto': 'Un juego de agujas. Del jersey salen los demás dibujos, cambiando qué agujas hacen malla, '
+                 'cuáles cargan el hilo y cuáles se anulan en cada pasada.',
+        'dibujos': [
+            {'clave': 'jersey', 'nombre': 'Jersey',
+             'texto': 'Todas las agujas hacen malla en todas las pasadas. Es el dibujo base de una fontura.'},
+            {'clave': 'listado', 'nombre': 'Listado',
+             'texto': 'Jersey con hilos de distinto color por pasada: rayas a lo ancho de la tela.'},
+            {'clave': 'vanizado', 'nombre': 'Vanizado',
+             'texto': 'Dos hilos entran juntos a cada aguja: uno queda a la cara y el otro al revés.'},
+            {'clave': 'pique_cargas', 'nombre': 'Piqué cargas',
+             'texto': 'Agujas alternas cargan el hilo sin soltar la malla. De ahí sale el relieve del piqué.'},
+            {'clave': 'pique_anulado', 'nombre': 'Piqué anulado',
+             'texto': 'Agujas alternas no suben y el hilo pasa de largo por detrás.'},
+            {'clave': 'crepe_cargas', 'nombre': 'Crepé cargas',
+             'texto': 'Cargas repartidas sin orden aparente: superficie granulada.'},
+            {'clave': 'crepe_anulado', 'nombre': 'Crepé anulado',
+             'texto': 'Anulados repartidos sin orden aparente: grano más cerrado y firme.'},
+            {'clave': 'french_terry', 'nombre': 'French terry',
+             'texto': 'Un hilo de felpa se amarra con cargas y flota por el revés entre pasadas de jersey.'},
+            {'clave': 'flece', 'nombre': 'Flece',
+             'texto': 'Tres hilos: base, felpa y amarre. La felpa del revés se percha en el acabado.'},
+            {'clave': 'desagujado', 'nombre': 'Desagujado',
+             'texto': 'Se retiran agujas a intervalos: queda una canaleta a lo largo de la tela.'},
+            {'clave': 'jacquard', 'nombre': 'Jacquard',
+             'texto': 'Cada aguja elige qué color teje en cada pasada: el dibujo sale del tejido.'},
+        ],
+    },
+    {
+        'clave': 'doble_fontura',
+        'nombre': 'Doble fontura',
+        'texto': 'Dos juegos de agujas, cilindro y plato. La tela tiene mallas por las dos caras.',
+        'dibujos': [
+            {'clave': 'rib', 'nombre': 'Rib',
+             'texto': 'Las agujas del cilindro y del plato tejen alternadas. Mucha elasticidad a lo ancho.'},
+            {'clave': 'interlock', 'nombre': 'Interlock',
+             'texto': 'Dos rib cruzados, uno por pasada. Tela lisa por las dos caras y estable.'},
+            {'clave': 'punto_roma', 'nombre': 'Punto de Roma',
+             'texto': 'Dos pasadas de interlock, una solo de cilindro y una solo de plato. Tela con cuerpo.'},
+            {'clave': 'cardigan', 'nombre': 'Cardigan',
+             'texto': 'Una fontura hace malla mientras la otra carga, y se alternan. Tela gruesa y esponjosa.'},
+        ],
+    },
+]
+
+# Acabados, con los nombres del catálogo de acabados de la planta (claves de
+# codificación de artículos, parte «acabado»). La «clave» es la del script
+# (ACABADOS en static/src/js/quimibond.js), que anima el efecto de cada uno
+# sobre la tela. Sin parámetros de proceso ni químicos: eso es receta.
+ACABADOS = [
+    {
+        'clave': 'rama',
+        'nombre': 'En rama',
+        'texto': 'Se dan al pasar la tela por la rama, junto con el termofijado. Varios se pueden combinar '
+                 'en una misma tela.',
+        'acabados': [
+            {'clave': 'termofijado', 'nombre': 'Termofijado',
+             'texto': 'El calor fija el ancho y las medidas: la tela ya no encoge ni se deforma al cortarla.'},
+            {'clave': 'ignifugo', 'nombre': 'Ignífugo (antiflama)',
+             'texto': 'Retardante de flama: al retirar el fuego, la tela se apaga sola y la flama no avanza.'},
+            {'clave': 'repelente', 'nombre': 'Repelente',
+             'texto': 'El agua no moja la tela: forma gotas que resbalan por la superficie.'},
+            {'clave': 'antiestatico', 'nombre': 'Antiestático',
+             'texto': 'Disipa la carga que se acumula con el roce: la tela no se pega ni atrae pelusa.'},
+            {'clave': 'antibacterial', 'nombre': 'Antibacterial',
+             'texto': 'Frena el crecimiento de bacterias en la tela y, con ellas, el mal olor.'},
+            {'clave': 'secado', 'nombre': 'Secado rápido',
+             'texto': 'La tela absorbe la humedad, la reparte y seca pronto. Para ropa deportiva y de trabajo.'},
+            {'clave': 'tacto_suave', 'nombre': 'Tacto suave',
+             'texto': 'Suavizado: la tela cae con fluidez y se siente lisa en la mano.'},
+            {'clave': 'tacto_rigido', 'nombre': 'Tacto rígido',
+             'texto': 'Da cuerpo y firmeza: la tela mantiene su forma. También en semirrígido.'},
+            {'clave': 'resina', 'nombre': 'Resina acrílica',
+             'texto': 'La resina amarra las fibras donde se cruzan: más cuerpo, más resistencia y medidas estables.'},
+        ],
+    },
+    {
+        'clave': 'superficie',
+        'nombre': 'De superficie',
+        'texto': 'Cambian la cara de la tela: levantan la fibra o la dejan limpia.',
+        'acabados': [
+            {'clave': 'afelpado', 'nombre': 'Afelpado',
+             'texto': 'Se levanta la fibra de la superficie hasta formar una felpa que abriga.'},
+            {'clave': 'esmerilado', 'nombre': 'Esmerilado',
+             'texto': 'Un lijado fino deja una pelusa corta y pareja, con tacto de durazno.'},
+            {'clave': 'biopulido', 'nombre': 'Biopulido',
+             'texto': 'Retira la pelusa suelta: superficie más limpia, lisa y con menos bolitas.'},
+        ],
+    },
+]
+
 PRESENTACIONES = [
     'Tela tubular', 'Tela abierta', 'Teñida en jet', 'Termofijada en rama', 'Fusionable por espolvoreo',
     'Cortada y perforada',

@@ -333,12 +333,14 @@ class ProjectProjectDevEscalation(models.Model):
                 return self._sgi_dev_step('C1.09', self.sgi_dev_product_id.create_date or after_approval)
             if any(mo.state != 'done' for mo in mos):
                 return self._sgi_dev_step('C1.10', mos[:1].create_date)
-            if not self.sgi_dev_run_validated_by_id:
+            # La corrida se valida por orden (mrp.production), no en el proyecto.
+            if any(not mo.sgi_dev_run_validated_by_id for mo in mos):
                 finished = [mo.date_finished for mo in mos if mo.date_finished]
                 return self._sgi_dev_step('C1.11', max(finished) if finished else mos[-1].create_date)
             shipped = self.sgi_dev_shipment_ids.filtered('shipped_at').sorted('shipped_at')
             if not shipped:
-                return self._sgi_dev_step('C1.12', self.sgi_dev_run_validated_date or stage_start)
+                validated = [mo.sgi_dev_run_validated_date for mo in mos if mo.sgi_dev_run_validated_date]
+                return self._sgi_dev_step('C1.12', max(validated) if validated else stage_start)
             return self._sgi_dev_step('C1.12', shipped[-1].shipped_at)
         if key == 'respuesta_cliente':
             shipped = self.sgi_dev_shipment_ids.filtered('shipped_at').sorted('shipped_at')

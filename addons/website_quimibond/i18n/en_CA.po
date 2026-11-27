@@ -5209,3 +5209,369 @@ msgstr "stenter"
 #: code:addons/website_quimibond/controllers/contenido.py:0
 msgid "ramas"
 msgstr "stenters"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Una fontura"
+msgstr "Single knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Doble fontura"
+msgstr "Double knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Un juego de agujas. Del jersey salen los demás dibujos, cambiando qué agujas hacen malla, cuáles cargan el hilo y cuáles se anulan en cada pasada."
+msgstr "One set of needles. Every other structure comes from jersey, by changing which needles knit, which tuck and which miss on each course."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Listado"
+msgstr "Striped jersey"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Vanizado"
+msgstr "Plated jersey"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Piqué cargas"
+msgstr "Tuck piqué"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Piqué anulado"
+msgstr "Miss piqué"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Crepé cargas"
+msgstr "Tuck crepe"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Crepé anulado"
+msgstr "Miss crepe"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Flece"
+msgstr "Fleece"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Desagujado"
+msgstr "Needle-out"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Punto de Roma"
+msgstr "Ponte di Roma"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Todas las agujas hacen malla en todas las pasadas. Es el dibujo base de una fontura."
+msgstr "Every needle knits on every course. The base structure of single knits."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Jersey con hilos de distinto color por pasada: rayas a lo ancho de la tela."
+msgstr "Jersey with a different yarn colour per course: stripes across the fabric width."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Dos hilos entran juntos a cada aguja: uno queda a la cara y el otro al revés."
+msgstr "Two yarns feed each needle together: one shows on the face and the other on the back."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Agujas alternas cargan el hilo sin soltar la malla. De ahí sale el relieve del piqué."
+msgstr "Alternate needles tuck the yarn without casting off the loop. That gives piqué its texture."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Agujas alternas no suben y el hilo pasa de largo por detrás."
+msgstr "Alternate needles stay down and the yarn floats past them on the back."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cargas repartidas sin orden aparente: superficie granulada."
+msgstr "Tucks scattered with no apparent order: a grainy surface."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Anulados repartidos sin orden aparente: grano más cerrado y firme."
+msgstr "Misses scattered with no apparent order: a tighter, firmer grain."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Un hilo de felpa se amarra con cargas y flota por el revés entre pasadas de jersey."
+msgstr "A loop yarn is tied in with tucks and floats on the back between jersey courses."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tres hilos: base, felpa y amarre. La felpa del revés se percha en el acabado."
+msgstr "Three yarns: ground, fleece and tie-in. The fleece on the back is brushed in finishing."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Se retiran agujas a intervalos: queda una canaleta a lo largo de la tela."
+msgstr "Needles are taken out at intervals, leaving a channel along the fabric."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cada aguja elige qué color teje en cada pasada: el dibujo sale del tejido."
+msgstr "Each needle selects which colour it knits on each course: the pattern is knitted in."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Dos juegos de agujas, cilindro y plato. La tela tiene mallas por las dos caras."
+msgstr "Two sets of needles, cylinder and dial. The fabric shows loops on both faces."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Las agujas del cilindro y del plato tejen alternadas. Mucha elasticidad a lo ancho."
+msgstr "Cylinder and dial needles knit alternately. High stretch across the width."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Dos rib cruzados, uno por pasada. Tela lisa por las dos caras y estable."
+msgstr "Two crossed ribs, one per course. A stable fabric, smooth on both faces."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Dos pasadas de interlock, una solo de cilindro y una solo de plato. Tela con cuerpo."
+msgstr "Two interlock courses, one on the cylinder only and one on the dial only. A fabric with body."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Una fontura hace malla mientras la otra carga, y se alternan. Tela gruesa y esponjosa."
+msgstr "One needle bed knits while the other tucks, and they alternate. A thick, lofty fabric."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Dibujos de tejido</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Knit structures</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Así se forma cada dibujo, pasada por pasada."
+msgstr "How each structure is knitted, course by course."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Cada dibujo sale de decidir qué agujas hacen malla, cuáles cargan el hilo y cuáles se anulan en cada pasada. Pase el cursor sobre uno para acelerarlo."
+msgstr "Each structure comes from deciding which needles knit, which tuck and which miss on each course. Hover over one to speed it up."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "En rama"
+msgstr "On the stenter"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Se dan al pasar la tela por la rama, junto con el termofijado. Varios se pueden combinar en una misma tela."
+msgstr "Applied as the fabric runs through the stenter, together with heat setting. Several can be combined on the same fabric."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Termofijado"
+msgstr "Heat setting"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "El calor fija el ancho y las medidas: la tela ya no encoge ni se deforma al cortarla."
+msgstr "Heat sets the width and dimensions: the fabric no longer shrinks or distorts when cut."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ignífugo (antiflama)"
+msgstr "Flame retardant"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Retardante de flama: al retirar el fuego, la tela se apaga sola y la flama no avanza."
+msgstr "Flame retardant: once the fire is removed, the fabric self-extinguishes and the flame does not spread."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Repelente"
+msgstr "Water repellent"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "El agua no moja la tela: forma gotas que resbalan por la superficie."
+msgstr "Water does not wet the fabric: it beads up and rolls off the surface."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Antiestático"
+msgstr "Antistatic"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Disipa la carga que se acumula con el roce: la tela no se pega ni atrae pelusa."
+msgstr "Dissipates the charge built up by friction: the fabric does not cling or attract lint."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Antibacterial"
+msgstr "Antibacterial"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Frena el crecimiento de bacterias en la tela y, con ellas, el mal olor."
+msgstr "Slows the growth of bacteria on the fabric and, with them, odour."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Secado rápido"
+msgstr "Quick dry"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "La tela absorbe la humedad, la reparte y seca pronto. Para ropa deportiva y de trabajo."
+msgstr "The fabric absorbs moisture, spreads it and dries fast. For sportswear and workwear."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tacto suave"
+msgstr "Soft hand"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Suavizado: la tela cae con fluidez y se siente lisa en la mano."
+msgstr "Softening: the fabric drapes fluidly and feels smooth in the hand."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tacto rígido"
+msgstr "Stiff hand"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Da cuerpo y firmeza: la tela mantiene su forma. También en semirrígido."
+msgstr "Adds body and firmness: the fabric holds its shape. Also available semi-stiff."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Resina acrílica"
+msgstr "Acrylic resin"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "La resina amarra las fibras donde se cruzan: más cuerpo, más resistencia y medidas estables."
+msgstr "The resin bonds the fibres where they cross: more body, more strength and stable dimensions."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De superficie"
+msgstr "Surface finishes"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cambian la cara de la tela: levantan la fibra o la dejan limpia."
+msgstr "They change the face of the fabric: raising the fibre or leaving it clean."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Afelpado"
+msgstr "Brushed (raised)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Se levanta la fibra de la superficie hasta formar una felpa que abriga."
+msgstr "The surface fibre is raised into a warm, fleecy nap."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Esmerilado"
+msgstr "Sueded (peached)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Un lijado fino deja una pelusa corta y pareja, con tacto de durazno."
+msgstr "Fine sanding leaves a short, even nap with a peach-skin hand."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Biopulido"
+msgstr "Bio-polishing"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Retira la pelusa suelta: superficie más limpia, lisa y con menos bolitas."
+msgstr "Removes loose fuzz: a cleaner, smoother surface with less pilling."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Acabados</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Finishes</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "El acabado decide cómo se comporta la tela."
+msgstr "The finish decides how the fabric behaves."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Repeler el agua, no propagar la flama, no cargarse de estática: cada acabado se da según la especificación del cliente. Pase el cursor sobre uno para acelerarlo."
+msgstr "Repelling water, not spreading flame, not building up static: each finish is applied to the customer's specification. Hover over one to speed it up."
