@@ -173,9 +173,10 @@ En la ficha del sitio web: **Certificados (PDF)** (los adjuntos se descargan
 desde `/compradores-automotrices` por `/calidad/certificado/<id>`; sin
 adjuntos, la página ofrece pedirlos por formulario) y **Liga para agendar**
 (por ejemplo la de la app Citas; vacía, `/agendar` muestra su propio
-formulario, que crea una oportunidad «Web · Llamada»). Las llamadas se asignan
-al vendedor de **Atiende las llamadas**; las del mercado de confección, al de
-**Atiende las llamadas de confección**.
+formulario, que crea una oportunidad «Web · Llamada»). Desde 1.15.3 toda
+solicitud del sitio (cotización, llamada, diseñador…) se asigna al vendedor de
+**Atiende las solicitudes del sitio**; las del mercado de confección, al de
+**Atiende las solicitudes de confección**. Sin vendedor nadie recibe aviso.
 
 ## Dibujos de tejido (desde 1.16.0)
 
