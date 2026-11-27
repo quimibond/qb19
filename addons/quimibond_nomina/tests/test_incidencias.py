@@ -487,6 +487,9 @@ class TestIncidenciasGenerar(TransactionCase):
     def test_generar_por_turno_de_noche(self):
         otro = self.env['hr.employee'].create({'name': 'Prueba Turno Noche', 'registration_number': 'Q-903',
                                                'qb_turno': '3'})
+        # Desde 1.26.0 las 6 HE del turno 4 solo las paga una cuadrilla con la casilla (Inspección, Acabado…).
+        cuadrilla = self.env['qb.nomina.cuadrilla'].create({'name': 'Prueba Noche', 'turno': '3', 'he_fijas': True})
+        otro.qb_cuadrilla_id = cuadrilla
         otro.version_id.write({'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),
                                'resource_calendar_id': self.calendario.id})
         self.env['qb.checada'].create([{

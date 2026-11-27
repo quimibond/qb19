@@ -113,6 +113,12 @@ class TestIsrSemanal(TransactionCase):
         imss = self.env['hr.salary.rule.category'].search([('code', '=', 'IMSS_EMPLOYEE')], limit=1)
         if not imss:
             self.skipTest('sin la categoría IMSS_EMPLOYEE de la localización')
+        # La categoría es de la localización (México): la estructura debe ser del
+        # mismo país o Odoo rechaza la regla.
+        if imss.country_id:
+            self.struct.type_id.country_id = imss.country_id
+            if self.struct.country_id != imss.country_id:
+                self.struct.country_id = imss.country_id
         codigos = {'QB_A': basic, 'QB_B': basic, 'QB_IMSS1': imss, 'QB_IMSS2': imss}
         for codigo, categoria in codigos.items():
             Rule.create({'name': codigo, 'code': codigo, 'struct_id': self.struct.id,

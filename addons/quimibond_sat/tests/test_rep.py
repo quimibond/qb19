@@ -123,7 +123,12 @@ class TestSatRep(SatCommon):
         if 'l10n_mx_edi_cfdi_uuid' not in self.env['account.payment']._fields:
             self.skipTest('l10n_mx_edi no está instalado: los pagos no tienen folio fiscal')
         bill, cfdi, pay = self._factura_pagada(UUID_F, 'f')
-        pay[:1].write({'l10n_mx_edi_cfdi_uuid': UUID_P1.upper()})
+        # En Odoo 19 el folio del pago es un related de su asiento (move_id.l10n_mx_edi_cfdi_uuid): sin
+        # asiento la escritura se pierde. Se escribe en el asiento, como lo deja el timbrado.
+        if not pay[:1].move_id:
+            self.skipTest('El pago de prueba no tiene asiento (diario sin cuentas pendientes): no hay folio')
+        pay[:1].move_id.write({'l10n_mx_edi_cfdi_uuid': UUID_P1.upper()})
+        pay[:1].invalidate_recordset(['l10n_mx_edi_cfdi_uuid'])
         self._upsert(syntage_rep(UUID_P1, 'rep-1'))
         pago = self._pago(pago_de_rep('r1', UUID_F, 1000.0, 'rep-1'))
         self.assertEqual(pago.account_payment_id, pay[:1])

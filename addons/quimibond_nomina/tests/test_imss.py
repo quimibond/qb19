@@ -237,6 +237,9 @@ class TestImss(TransactionCase):
         self.assertEqual(linea.sdi_nuevo, round(394.76 * 1.0521, 2))
         self.assertEqual(w.tope, round(25 * 117.31, 2))
         self.assertTrue(linea.aplicar)
+        # Solo el contrato de prueba: los empleados de demostración de la base de
+        # build tienen estructuras sin la propiedad «sdi_imss» y detendrían el lote.
+        (w.linea_ids - linea).write({'aplicar': False})
         w.action_aplicar()
         self.assertEqual(self.version._qb_imss_sdi(), linea.sdi_nuevo)
         mov = self.Mov.search([('employee_id', '=', self.emp.id), ('tipo', '=', '07')])
