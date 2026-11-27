@@ -161,6 +161,9 @@ class TestDevFabricSheet(TransactionCase):
             sheet.with_user(self.yet).action_sgi_validate()
         sheet.with_user(self.jefe).action_sgi_validate()
         self.assertEqual(sheet.sgi_validated_by_id, self.jefe)
+        # El assertRaises de arriba revierte su savepoint y con él la caché donde vive un new(): la orden
+        # en memoria se vuelve a armar aquí para que conserve su proyecto.
+        tenido_mo = self.env['mrp.production'].new({'product_id': self.tenido.id, 'sgi_dev_project_id': self.dev.id})
         self.assertEqual(tenido_mo._sgi_dev_run_sheet_problems(), [], "El teñido se valida contra la ficha de acabado")
         wiz = self.env['sgi.dev.process.sheets.wizard'].with_context(default_project_id=self.dev.id).create({})
         tenido = wiz.line_ids.filtered(lambda l: l.stage == 'tenido')

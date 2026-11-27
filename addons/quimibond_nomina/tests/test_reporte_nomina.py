@@ -40,11 +40,15 @@ class TestReporteNomina(TransactionCase):
                 'company_id': slip.company_id.id, 'incluir_borrador': True})
             datos = wiz._qb_datos()
             self.assertTrue(datos['recibos'])
-            accion = wiz.action_generar()
+            # Sin formato de documento en la compañía, report_action abre el configurador en vez del PDF:
+            # en una base demo eso no dice nada del reporte.
+            accion = wiz.with_context(discard_logo_check=True).action_generar()
             self.assertEqual(accion['type'], 'ir.actions.report')
             html, _tipo = self.env['ir.actions.report']._render_qweb_html(accion['report_name'], wiz.ids)
             self.assertIn(b'Percepci', html)
             wiz.formato = 'xlsx'
-            accion = wiz.action_generar()
+            # Sin formato de documento en la compañía, report_action abre el configurador en vez del PDF:
+            # en una base demo eso no dice nada del reporte.
+            accion = wiz.with_context(discard_logo_check=True).action_generar()
             self.assertEqual(accion['type'], 'ir.actions.act_url')
             self.assertTrue(wiz.archivo)

@@ -426,6 +426,9 @@ class TestIncidenciasGenerar(TransactionCase):
         } for m in marcas])
 
     def test_generar_marca_falta_y_conserva_lo_autorizado(self):
+        # El turno de RH manda sobre el que infiere el checador (1.21.0): sin él, una semana de día con
+        # una falta se parece al turno 3 (12 h, 4 días) y el martes se pagaría en vez de contarse.
+        self.empleado.qb_turno = '1'
         marcas = [m for m in _semana_normal() if m.day != 13]
         marcas += [dt(2026, 10, 17, 7, 0), dt(2026, 10, 17, 13, 0)]     # sábado: 6 h de extra
         self._checar(marcas)
@@ -453,6 +456,10 @@ class TestIncidenciasGenerar(TransactionCase):
                                                'qb_turno': '3'})
         otro.version_id.write({'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),
                                'resource_calendar_id': self.calendario.id})
+        # Las 6 HE fijas del turno 4 solo las paga la cuadrilla que las tiene (1.26.0, RH 24-nov).
+        otro.qb_cuadrilla_id = self.env['qb.nomina.cuadrilla'].create({
+            'name': 'Prueba HE fijas', 'turno': '3', 'rotacion': '3,4', 'he_fijas': True})
+        self.assertEqual(otro.qb_turno, '3', 'la cuadrilla le escribe su turno')
         self.env['qb.checada'].create([{
             'equipo_id': self.equipo.id, 'pin': '2903', 'employee_id': otro.id,
             'timestamp': m + timedelta(hours=6), 'state': 'emparejada',

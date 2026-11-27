@@ -123,7 +123,11 @@ class TestSatRep(SatCommon):
         if 'l10n_mx_edi_cfdi_uuid' not in self.env['account.payment']._fields:
             self.skipTest('l10n_mx_edi no está instalado: los pagos no tienen folio fiscal')
         bill, cfdi, pay = self._factura_pagada(UUID_F, 'f')
-        pay[:1].write({'l10n_mx_edi_cfdi_uuid': UUID_P1.upper()})
+        # En Odoo 19 el pago nace «en proceso» y sin asiento, y el folio fiscal del pago es el de su
+        # asiento (campo related): hay que generarlo para poder sellarlo, como en producción.
+        pay[:1]._generate_journal_entry()
+        pay[:1].move_id.write({'l10n_mx_edi_cfdi_uuid': UUID_P1.upper()})
+        self.assertEqual(pay[:1].l10n_mx_edi_cfdi_uuid, UUID_P1.upper())
         self._upsert(syntage_rep(UUID_P1, 'rep-1'))
         pago = self._pago(pago_de_rep('r1', UUID_F, 1000.0, 'rep-1'))
         self.assertEqual(pago.account_payment_id, pay[:1])

@@ -14,6 +14,16 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.201.1 — 2026-11-27
+
+Dos pruebas que nunca pudieron pasar y pintaban de rojo el build de desarrollo (el CI no instala el SGI).
+
+- **Corregido:** `TestDevEscalation.test_02` corría el último cron con un reloj siete días adelantado, así que daba
+  por vencido el paso C1.03 que acababa de empezar; ahora se corre en el instante en que ese paso empieza.
+- **Corregido:** `TestDevFabricSheet.test_05` reusaba una orden `new()` después de un `assertRaises`, cuyo savepoint
+  revertido se lleva la caché donde vive el registro en memoria (el proyecto llegaba vacío y `ensure_one()` reventaba);
+  la orden se vuelve a armar después del bloque. Sin cambios de código del módulo.
+
 ## 19.0.57.201.0 — 2026-11-18
 
 Rango de mínimo a máximo en las características (fichas 2.30.0, pedido de Jose del 18-nov-2026).
