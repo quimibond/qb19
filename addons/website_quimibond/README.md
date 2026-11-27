@@ -177,6 +177,29 @@ formulario, que crea una oportunidad «Web · Llamada»). Las llamadas se asigna
 al vendedor de **Atiende las llamadas**; las del mercado de confección, al de
 **Atiende las llamadas de confección**.
 
+## Dibujos de tejido (desde 1.16.0)
+
+`/planta#dibujos` anima cómo se forma cada dibujo de punto, con los nombres
+del catálogo de la planta: once de una fontura (jersey, listado, vanizado,
+piqué y crepé de cargas y de anulado, french terry, flece, desagujado y
+jacquard) y cuatro de doble fontura (rib, interlock, punto de Roma y
+cardigan). Nombres y textos en `DIBUJOS` de `controllers/contenido.py`; el
+ligamento de cada uno (malla `K`, carga `T`, anulado `M`, aguja retirada `X`
+por aguja y pasada) en `DIBUJOS` de `static/src/js/quimibond.js`, con la misma
+clave. Un dibujo nuevo va en los dos lados y con su inglés en el `.po`.
+
+## Acabados (desde 1.17.0)
+
+`/planta#acabados` anima el efecto de cada acabado sobre la tela (no la
+máquina), con los nombres del catálogo de acabados de la planta: nueve que se
+dan en rama (termofijado, ignífugo, repelente, antiestático, antibacterial,
+secado rápido, tacto suave, tacto rígido y resina acrílica) y tres de
+superficie (afelpado, esmerilado y biopulido). «Secado rápido» es el «Dryfit»
+del catálogo: no se publica con ese nombre porque es marca de un tercero.
+Nombres y textos en `ACABADOS` de `controllers/contenido.py`; el dibujo de
+cada uno en `ACABADOS` de `static/src/js/quimibond.js`, con la misma clave.
+Sin químicos, temperaturas ni concentraciones: eso es receta.
+
 ## Versión en inglés
 
 El módulo está escrito en español. `en_US` es el idioma de origen de Odoo y

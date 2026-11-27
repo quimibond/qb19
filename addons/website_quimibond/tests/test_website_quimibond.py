@@ -284,6 +284,40 @@ class TestSitioB2B(HttpCase):
             self.assertEqual(pagina.status_code, 200, ruta)
             self.assertIn(texto, pagina.text, ruta)
 
+    def test_dibujos_de_tejido(self):
+        """Cada dibujo de contenido tiene su ligamento en el script y sale en /planta."""
+        import re
+        from odoo.addons.website_quimibond.controllers import contenido
+        from odoo.tools.misc import file_open
+        with file_open('website_quimibond/static/src/js/quimibond.js') as archivo:
+            script = archivo.read()
+        tabla = script[script.index('var DIBUJOS = {'):script.index('function dibujoTejido')]
+        en_script = set(re.findall(r'^\s{8}(\w+): \{ filas:', tabla, re.M))
+        claves = [d['clave'] for g in contenido.DIBUJOS for d in g['dibujos']]
+        self.assertEqual(len(claves), 15)
+        self.assertEqual(set(claves), en_script)
+        self.website.qb_diseno_b2b = True
+        pagina = self.url_open('/planta').text
+        for clave in claves:
+            self.assertIn('data-qb-dibujo="%s"' % clave, pagina, clave)
+
+    def test_acabados(self):
+        """Cada acabado de contenido tiene su animación en el script y sale en /planta."""
+        import re
+        from odoo.addons.website_quimibond.controllers import contenido
+        from odoo.tools.misc import file_open
+        with file_open('website_quimibond/static/src/js/quimibond.js') as archivo:
+            script = archivo.read()
+        tabla = script[script.index('var ACABADOS = '):script.index('function acabadoTela')]
+        en_script = set(re.findall(r'^\s{12}(\w+): \{ pinta:', tabla, re.M))
+        claves = [a['clave'] for g in contenido.ACABADOS for a in g['acabados']]
+        self.assertEqual(len(claves), 12)
+        self.assertEqual(set(claves), en_script)
+        self.website.qb_diseno_b2b = True
+        pagina = self.url_open('/planta').text
+        for clave in claves:
+            self.assertIn('data-qb-acabado="%s"' % clave, pagina, clave)
+
     def test_traducciones_completas(self):
         """Cada texto de contenido y del script tiene su inglés en el .po."""
         from odoo.addons.website_quimibond.controllers import contenido, familias, idioma, prospectos
