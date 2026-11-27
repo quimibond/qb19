@@ -5380,8 +5380,8 @@ msgstr "One needle bed knits while the other tucks, and they alternate. A thick,
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.planta
-msgid "Dibujos de tejido"
-msgstr "Knit structures"
+msgid "<span class=\"qb-eyebrow qb-reveal\">Dibujos de tejido</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Knit structures</span>"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.planta
@@ -5563,8 +5563,8 @@ msgstr "Removes loose fuzz: a cleaner, smoother surface with less pilling."
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.planta
-msgid "Acabados"
-msgstr "Finishes"
+msgid "<span class=\"qb-eyebrow qb-reveal\">Acabados</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Finishes</span>"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.planta
